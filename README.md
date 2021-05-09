@@ -1,7 +1,7 @@
 # HTTP-Server-using-Steganography
 
 ### How to Run:
-
+hello
 1) Run server.py
 2) Run client.py
 3) Run command prompt and type "ipconfig" to get ipv4 id

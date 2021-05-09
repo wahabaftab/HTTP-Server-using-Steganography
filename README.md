@@ -1,6 +1,8 @@
 # HTTP-Server-using-Steganography
 
-This repo contains a secure HTTP server that is able to serve web clients with secure contents. It uses Python socket programming and Steganography to achieve this task.The server encodes the text file requested by the client in an image using least 3 bits steganography and The client on receipt of the encoded image file, runs the decoder and extracts the .txt file from the image. Detailed explanation can be found here: 
+This repo contains a secure HTTP server that is able to serve web clients with secure contents. It uses Python socket programming and Steganography to achieve this task.The server encodes the text file requested by the client in an image using least 3 bits steganography and The client on receipt of the encoded image file, runs the decoder and extracts the .txt file from the image. 
+
+Detailed explanation can be found here: 
 https://wahabaftab.com/L3SB_Steganography/
 
 This server runs on port 55555 and is capable of returning 2 different kinds of responses to its clients:

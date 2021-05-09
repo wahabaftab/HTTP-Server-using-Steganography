@@ -1,0 +1,477 @@
+This is text 2
+We learned in the previous chapter that the transport layer provides various forms of
+process-to-process communication by relying on the network layer’s host-to-host
+communication service. We also learned that the transport layer does so without any
+knowledge about how the network layer actually implements this service. So perhaps you’re now wondering, what’s under the hood of the host-to-host communication service, what makes it tick?
+In this chapter, we’ll learn exactly how the network layer implements the hostto-host communication service. We’ll see that unlike the transport and application
+layers, there is a piece of the network layer in each and every host and router in the
+network. Because of this, network-layer protocols are among the most challenging
+(and therefore among the most interesting!) in the protocol stack.
+The network layer is also one of the most complex layers in the protocol stack,
+and so we’ll have a lot of ground to cover here. We’ll begin our study with an
+overview of the network layer and the services it can provide. We’ll then examine
+two broad approaches towards structuring network-layer packet delivery—the datagram and the virtual-circuit model—and see the fundamental role that addressing
+plays in delivering a packet to its destination host.
+In this chapter, we’ll make an important distinction between the forwarding
+and routing functions of the network layer. Forwarding involves the transfer of a
+packet from an incoming link to an outgoing link within a single router. Routing
+involves all of a network’s routers, whose collective interactions via routing protocols determine the paths that packets take on their trips from source to destination
+node. This will be an important distinction to keep in mind as you progress through
+this chapter.
+In order to deepen our understanding of packet forwarding, we’ll look “inside”
+a router—at its hardware architecture and organization. We’ll then look at packet
+forwarding in the Internet, along with the celebrated Internet Protocol (IP). We’ll
+investigate network-layer addressing and the IPv4 datagram format. We’ll then
+explore network address translation (NAT), datagram fragmentation, the Internet
+Control Message Protocol (ICMP), and IPv6.
+We’ll then turn our attention to the network layer’s routing function. We’ll see
+that the job of a routing algorithm is to determine good paths (equivalently, routes)
+from senders to receivers. We’ll first study the theory of routing algorithms, concentrating on the two most prevalent classes of algorithms: link-state and distancevector algorithms. Since the complexity of routing algorithms grows considerably
+as the number of network routers increases, hierarchical routing approaches will
+also be of interest. We’ll then see how theory is put into practice when we cover the
+Internet’s intra-autonomous system routing protocols (RIP, OSPF, and IS-IS) and its
+inter-autonomous system routing protocol, BGP. We’ll close this chapter with a discussion of broadcast and multicast routing.
+In summary, this chapter has three major parts. The first part, Sections 4.1 and
+4.2, covers network-layer functions and services. The second part, Sections 4.3 and
+4.4, covers forwarding. Finally, the third part, Sections 4.5 through 4.7, covers
+routing.
+4.1 Introduction
+Figure 4.1 shows a simple network with two hosts, H1 and H2, and several routers
+on the path between H1 and H2. Suppose that H1 is sending information to H2, and
+consider the role of the network layer in these hosts and in the intervening routers.
+The network layer in H1 takes segments from the transport layer in H1, encapsulates each segment into a datagram (that is, a network-layer packet), and then sends
+the datagrams to its nearby router, R1. At the receiving host, H2, the network layer
+receives the datagrams from its nearby router R2, extracts the transport-layer segments, and delivers the segments up to the transport layer at H2. The primary role of
+the routers is to forward datagrams from input links to output links. Note that the
+routers in Figure 4.1 are shown with a truncated protocol stack, that is, with no
+upper layers above the network layer, because (except for control purposes) routers
+do not run application- and transport-layer protocols such as those we examined in
+Chapters 2 and 3.
+306 CHAPTER 4 • THE NETWORK LAYER
+4.1 • INTRODUCTION 307
+Mobile Network
+Router R1
+Router R2
+National or
+Global ISP
+Local or
+Regional ISP
+Enterprise Network
+Home Network
+End system H1
+Data link
+Physical
+Application
+Transport
+Network
+End system H2
+Data link
+Physical
+Application
+Transport
+Network
+Data link
+Physical
+Network
+Data link
+Physical
+Network
+Data link
+Physical
+Network
+Data link
+Physical
+Network
+Data link
+Physical
+Network
+Figure 4.1  The network layer
+4.1.1 Forwarding and Routing
+The role of the network layer is thus deceptively simple—to move packets from a
+sending host to a receiving host. To do so, two important network-layer functions
+can be identified:
+• Forwarding. When a packet arrives at a router’s input link, the router must move
+the packet to the appropriate output link. For example, a packet arriving from
+Host H1 to Router R1 must be forwarded to the next router on a path to H2. In
+Section 4.3, we’ll look inside a router and examine how a packet is actually forwarded from an input link to an output link within a router.
+• Routing. The network layer must determine the route or path taken by packets as
+they flow from a sender to a receiver. The algorithms that calculate these paths
+are referred to as routing algorithms. A routing algorithm would determine, for
+example, the path along which packets flow from H1 to H2.
+The terms forwarding and routing are often used interchangeably by authors discussing the network layer. We’ll use these terms much more precisely in this book.
+Forwarding refers to the router-local action of transferring a packet from an input link
+interface to the appropriate output link interface. Routing refers to the network-wide
+process that determines the end-to-end paths that packets take from source to destination. Using a driving analogy, consider the trip from Pennsylvania to Florida undertaken by our traveler back in Section 1.3.1. During this trip, our driver passes through
+many interchanges en route to Florida. We can think of forwarding as the process of
+getting through a single interchange: A car enters the interchange from one road and
+determines which road it should take to leave the interchange. We can think of routing
+as the process of planning the trip from Pennsylvania to Florida: Before embarking on
+the trip, the driver has consulted a map and chosen one of many paths possible, with
+each path consisting of a series of road segments connected at interchanges.
+Every router has a forwarding table. A router forwards a packet by examining the value of a field in the arriving packet’s header, and then using this header
+value to index into the router’s forwarding table. The value stored in the forwarding table entry for that header indicates the router’s outgoing link interface to
+which that packet is to be forwarded. Depending on the network-layer protocol,
+the header value could be the destination address of the packet or an indication of
+the connection to which the packet belongs. Figure 4.2 provides an example. In
+Figure 4.2, a packet with a header field value of 0111 arrives to a router. The
+router indexes into its forwarding table and determines that the output link
+interface for this packet is interface 2. The router then internally forwards the
+packet to interface 2. In Section 4.3, we’ll look inside a router and examine the
+forwarding function in much greater detail.
+You might now be wondering how the forwarding tables in the routers are configured. This is a crucial issue, one that exposes the important interplay between
+308 CHAPTER 4 • THE NETWORK LAYER
+routing and forwarding. As shown in Figure 4.2, the routing algorithm determines
+the values that are inserted into the routers’ forwarding tables. The routing algorithm
+may be centralized (e.g., with an algorithm executing on a central site and downloading routing information to each of the routers) or decentralized (i.e., with a
+piece of the distributed routing algorithm running in each router). In either case, a
+router receives routing protocol messages, which are used to configure its forwarding table. The distinct and different purposes of the forwarding and routing functions can be further illustrated by considering the hypothetical (and unrealistic, but
+technically feasible) case of a network in which all forwarding tables are configured
+directly by human network operators physically present at the routers. In this case,
+no routing protocols would be required! Of course, the human operators would need
+to interact with each other to ensure that the forwarding tables were configured in
+such a way that packets reached their intended destinations. It’s also likely that
+human configuration would be more error-prone and much slower to respond to
+changes in the network topology than a routing protocol. We’re thus fortunate that
+all networks have both a forwarding and a routing function!
+4.1 • INTRODUCTION 309
+Value in arriving
+packet’s header
+1
+2
+3
+Routing algorithm
+Local forwarding table
+header value
+0100
+0101
+0111
+1001
+0111
+3221
+output link
+Figure 4.2  Routing algorithms determine values in forwarding tables
+While we’re on the topic of terminology, it’s worth mentioning two other terms
+that are often used interchangeably, but that we will use more carefully. We’ll reserve
+the term packet switch to mean a general packet-switching device that transfers a
+packet from input link interface to output link interface, according to the value in a field
+in the header of the packet. Some packet switches, called link-layer switches (examined in Chapter 5), base their forwarding decision on values in the fields of the linklayer frame; switches are thus referred to as link-layer (layer 2) devices. Other packet
+switches, called routers, base their forwarding decision on the value in the networklayer field. Routers are thus network-layer (layer 3) devices, but must also implement
+layer 2 protocols as well, since layer 3 devices require the services of layer 2 to implement their (layer 3) functionality. (To fully appreciate this important distinction, you
+might want to review Section 1.5.2, where we discuss network-layer datagrams and
+link-layer frames and their relationship.) To confuse matters, marketing literature often
+refers to “layer 3 switches” for routers with Ethernet interfaces, but these are really
+layer 3 devices. Since our focus in this chapter is on the network layer, we use the term
+router in place of packet switch. We’ll even use the term router when talking about
+packet switches in virtual-circuit networks (soon to be discussed).
+Connection Setup
+We just said that the network layer has two important functions, forwarding and routing. But we’ll soon see that in some computer networks there is actually a third important network-layer function, namely, connection setup. Recall from our study of TCP
+that a three-way handshake is required before data can flow from sender to receiver.
+This allows the sender and receiver to set up the needed state information (for example,
+sequence number and initial flow-control window size). In an analogous manner, some
+network-layer architectures—for example, ATM, frame relay, and MPLS (which we
+will study in Section 5.8)––require the routers along the chosen path from source to
+destination to handshake with each other in order to set up state before network-layer
+data packets within a given source-to-destination connection can begin to flow. In the
+network layer, this process is referred to as connection setup. We’ll examine connection setup in Section 4.2.
+4.1.2 Network Service Models
+Before delving into the network layer, let’s take the broader view and consider the different types of service that might be offered by the network layer. When the transport
+layer at a sending host transmits a packet into the network (that is, passes it down to
+the network layer at the sending host), can the transport layer rely on the network layer
+to deliver the packet to the destination? When multiple packets are sent, will they be
+delivered to the transport layer in the receiving host in the order in which they were
+sent? Will the amount of time between the sending of two sequential packet transmissions be the same as the amount of time between their reception? Will the network
+310 CHAPTER 4 • THE NETWORK LAYER
+provide any feedback about congestion in the network? What is the abstract view
+(properties) of the channel connecting the transport layer in the sending and receiving
+hosts? The answers to these questions and others are determined by the service model
+provided by the network layer. The network service model defines the characteristics
+of end-to-end transport of packets between sending and receiving end systems.
+Let’s now consider some possible services that the network layer could provide.
+In the sending host, when the transport layer passes a packet to the network layer,
+specific services that could be provided by the network layer include:
+• Guaranteed delivery. This service guarantees that the packet will eventually
+arrive at its destination.
+• Guaranteed delivery with bounded delay. This service not only guarantees delivery of the packet, but delivery within a specified host-to-host delay bound (for
+example, within 100 msec).
+Furthermore, the following services could be provided to a flow of packets between
+a given source and destination:
+• In-order packet delivery. This service guarantees that packets arrive at the destination in the order that they were sent.
+• Guaranteed minimal bandwidth. This network-layer service emulates the behavior
+of a transmission link of a specified bit rate (for example, 1 Mbps) between sending and receiving hosts. As long as the sending host transmits bits (as part of packets) at a rate below the specified bit rate, then no packet is lost and each packet
+arrives within a prespecified host-to-host delay (for example, within 40 msec).
+• Guaranteed maximum jitter. This service guarantees that the amount of time
+between the transmission of two successive packets at the sender is equal to the
+amount of time between their receipt at the destination (or that this spacing
+changes by no more than some specified value).
+• Security services. Using a secret session key known only by a source and destination host, the network layer in the source host could encrypt the payloads of
+all datagrams being sent to the destination host. The network layer in the
+destination host would then be responsible for decrypting the payloads. With
+such a service, confidentiality would be provided to all transport-layer segments
+(TCP and UDP) between the source and destination hosts. In addition to confidentiality, the network layer could provide data integrity and source authentication services.
+This is only a partial list of services that a network layer could provide—there are
+countless variations possible.
+The Internet’s network layer provides a single service, known as best-effort
+service. From Table 4.1, it might appear that best-effort service is a euphemism for
+4.1 • INTRODUCTION 311
+no service at all. With best-effort service, timing between packets is not guaranteed
+to be preserved, packets are not guaranteed to be received in the order in which they
+were sent, nor is the eventual delivery of transmitted packets guaranteed. Given this
+definition, a network that delivered no packets to the destination would satisfy the
+definition of best-effort delivery service. As we’ll discuss shortly, however, there
+are sound reasons for such a minimalist network-layer service model.
+Other network architectures have defined and implemented service models that
+go beyond the Internet’s best-effort service. For example, the ATM network architecture [MFA Forum 2012, Black 1995] provides for multiple service models, meaning that different connections can be provided with different classes of service
+within the same network. A discussion of how an ATM network provides such services is well beyond the scope of this book; our aim here is only to note that alternatives do exist to the Internet’s best-effort model. Two of the more important ATM
+service models are constant bit rate and available bit rate service:
+• Constant bit rate (CBR) ATM network service. This was the first ATM service
+model to be standardized, reflecting early interest by the telephone companies in
+ATM and the suitability of CBR service for carrying real-time, constant bit rate
+audio and video traffic. The goal of CBR service is conceptually simple—to provide a flow of packets (known as cells in ATM terminology) with a virtual pipe
+whose properties are the same as if a dedicated fixed-bandwidth transmission
+link existed between sending and receiving hosts. With CBR service, a flow of
+ATM cells is carried across the network in such a way that a cell’s end-to-end
+delay, the variability in a cell’s end-to-end delay (that is, the jitter), and the fraction
+of cells that are lost or delivered late are all guaranteed to be less than specified
+values. These values are agreed upon by the sending host and the ATM network
+when the CBR connection is first established.
+312 CHAPTER 4 • THE NETWORK LAYER
+Table 4.1  Internet, ATM CBR, and ATM ABR service models
+Network
+Architecture
+Service
+Model
+Bandwidth
+Guarantee
+No-Loss
+Guarantee Ordering Timing
+Internet Best Effort None None Any order
+possible
+Not
+maintained
+ATM CBR Guaranteed
+constant rate
+Yes In order Maintained
+ATM ABR Guaranteed
+minimum
+None In order Not
+maintained
+Congestion
+Indication
+None
+Congestion
+will not occur
+Congestion
+indication
+provided
+• Available bit rate (ABR) ATM network service. With the Internet offering socalled best-effort service, ATM’s ABR might best be characterized as being a
+slightly-better-than-best-effort service. As with the Internet service model,
+cells may be lost under ABR service. Unlike in the Internet, however, cells
+cannot be reordered (although they may be lost), and a minimum cell transmission rate (MCR) is guaranteed to a connection using ABR service. If the network has enough free resources at a given time, a sender may also be able to
+send cells successfully at a higher rate than the MCR. Additionally, as we saw
+in Section 3.6, ATM ABR service can provide feedback to the sender (in terms
+of a congestion notification bit, or an explicit rate at which to send) that controls how the sender adjusts its rate between the MCR and an allowable peak
+cell rate.
+4.2 Virtual Circuit and Datagram Networks
+Recall from Chapter 3 that a transport layer can offer applications connectionless
+service or connection-oriented service between two processes. For example, the Internet’s transport layer provides each application a choice between two services: UDP, a
+connectionless service; or TCP, a connection-oriented service. In a similar manner, a
+network layer can provide connectionless service or connection service between two
+hosts. Network-layer connection and connectionless services in many ways parallel
+transport-layer connection-oriented and connectionless services. For example, a network-layer connection service begins with handshaking between the source and destination hosts; and a network-layer connectionless service does not have any
+handshaking preliminaries.
+Although the network-layer connection and connectionless services have some
+parallels with transport-layer connection-oriented and connectionless services, there
+are crucial differences:
+• In the network layer, these services are host-to-host services provided by the network layer for the transport layer. In the transport layer these services are processto-process services provided by the transport layer for the application layer.
+• In all major computer network architectures to date (Internet, ATM, frame relay,
+and so on), the network layer provides either a host-to-host connectionless service or a host-to-host connection service, but not both. Computer networks that
+provide only a connection service at the network layer are called virtual-circuit
+(VC) networks; computer networks that provide only a connectionless service
+at the network layer are called datagram networks.
+• The implementations of connection-oriented service in the transport layer and
+the connection service in the network layer are fundamentally different. We saw
+in the previous chapter that the transport-layer connection-oriented service is
+4.2 • VIRTUAL CIRCUIT AND DATAGRAM NETWORKS 313
+implemented at the edge of the network in the end systems; we’ll see shortly that
+the network-layer connection service is implemented in the routers in the network core as well as in the end systems.
+Virtual-circuit and datagram networks are two fundamental classes of computer networks. They use very different information in making their forwarding decisions.
+Let’s now take a closer look at their implementations.
+4.2.1 Virtual-Circuit Networks
+While the Internet is a datagram network, many alternative network architectures—
+including those of ATM and frame relay—are virtual-circuit networks and, therefore, use connections at the network layer. These network-layer connections are
+called virtual circuits (VCs). Let’s now consider how a VC service can be implemented in a computer network.
+A VC consists of (1) a path (that is, a series of links and routers) between the
+source and destination hosts, (2) VC numbers, one number for each link along the
+path, and (3) entries in the forwarding table in each router along the path. A packet
+belonging to a virtual circuit will carry a VC number in its header. Because a virtual
+circuit may have a different VC number on each link, each intervening router must
+replace the VC number of each traversing packet with a new VC number. The new
+VC number is obtained from the forwarding table.
+To illustrate the concept, consider the network shown in Figure 4.3. The numbers
+next to the links of R1 in Figure 4.3 are the link interface numbers. Suppose now that
+Host A requests that the network establish a VC between itself and Host B. Suppose
+also that the network chooses the path A-R1-R2-B and assigns VC numbers 12, 22,
+and 32 to the three links in this path for this virtual circuit. In this case, when a packet
+in this VC leaves Host A, the value in the VC number field in the packet header is 12;
+when it leaves R1, the value is 22; and when it leaves R2, the value is 32.
+How does the router determine the replacement VC number for a packet traversing the router? For a VC network, each router’s forwarding table includes VC
+314 CHAPTER 4 • THE NETWORK LAYER
+A B R1 R2
+1 2
+3
+1 2
+3
+R3 R4
+Figure 4.3  A simple virtual circuit network
+4.2 • VIRTUAL CIRCUIT AND DATAGRAM NETWORKS 315
+number translation; for example, the forwarding table in R1 might look something
+like this:
+Whenever a new VC is established across a router, an entry is added to the forwarding table. Similarly, whenever a VC terminates, the appropriate entries in each table
+along its path are removed.
+You might be wondering why a packet doesn’t just keep the same VC number
+on each of the links along its route. The answer is twofold. First, replacing the number from link to link reduces the length of the VC field in the packet header. Second,
+and more importantly, VC setup is considerably simplified by permitting a different
+VC number at each link along the path of the VC. Specifically, with multiple VC
+numbers, each link in the path can choose a VC number independently of the VC
+numbers chosen at other links along the path. If a common VC number were required
+for all links along the path, the routers would have to exchange and process a substantial number of messages to agree on a common VC number (e.g., one that is not
+being used by any other existing VC at these routers) to be used for a connection.
+In a VC network, the network’s routers must maintain connection state information for the ongoing connections. Specifically, each time a new connection is
+established across a router, a new connection entry must be added to the router’s forwarding table; and each time a connection is released, an entry must be removed
+from the table. Note that even if there is no VC-number translation, it is still necessary to maintain connection state information that associates VC numbers with output interface numbers. The issue of whether or not a router maintains connection
+state information for each ongoing connection is a crucial one—one that we’ll return
+to repeatedly in this book.
+There are three identifiable phases in a virtual circuit:
+• VC setup. During the setup phase, the sending transport layer contacts the network layer, specifies the receiver’s address, and waits for the network to set up
+the VC. The network layer determines the path between sender and receiver, that
+is, the series of links and routers through which all packets of the VC will travel.
+The network layer also determines the VC number for each link along the path.
+Finally, the network layer adds an entry in the forwarding table in each router
+Incoming Interface Incoming VC # Outgoing Interface Outgoing VC #
+1 12 2 22
+2 63 1 18
+3 7 2 17
+1 97 3 87
+... ... ... ...
+along the path. During VC setup, the network layer may also reserve resources
+(for example, bandwidth) along the path of the VC.
+• Data transfer. As shown in Figure 4.4, once the VC has been established, packets can begin to flow along the VC.
+• VC teardown. This is initiated when the sender (or receiver) informs the network
+layer of its desire to terminate the VC. The network layer will then typically
+inform the end system on the other side of the network of the call termination
+and update the forwarding tables in each of the packet routers on the path to indicate that the VC no longer exists.
+There is a subtle but important distinction between VC setup at the network
+layer and connection setup at the transport layer (for example, the TCP three-way
+handshake we studied in Chapter 3). Connection setup at the transport layer
+involves only the two end systems. During transport-layer connection setup, the
+two end systems alone determine the parameters (for example, initial sequence
+number and flow-control window size) of their transport-layer connection.
+Although the two end systems are aware of the transport-layer connection, the
+routers within the network are completely oblivious to it. On the other hand, with
+a VC network layer, routers along the path between the two end systems are
+involved in VC setup, and each router is fully aware of all the VCs passing
+through it.
+The messages that the end systems send into the network to initiate or terminate a
+VC, and the messages passed between the routers to set up the VC (that is, to modify
+connection state in router tables) are known as signaling messages, and the protocols
+316 CHAPTER 4 • THE NETWORK LAYER
+Transport
+Data link
+Physical
+Application
+Network
+Transport
+Data link
+Physical
+Application
+Network
+1. Initiate call 2. Incoming call
+5. Data flow
+begins
+6. Receive
+data
+4. Call connected 3. Accept call
+Figure 4.4  Virtual-circuit setup
+used to exchange these messages are often referred to as signaling protocols. VC setup
+is shown pictorially in Figure 4.4. We’ll not cover VC signaling protocols in this book;
+see [Black 1997] for a general discussion of signaling in connection-oriented networks
+and [ITU-T Q.2931 1995] for the specification of ATM’s Q.2931 signaling protocol.
+4.2.2 Datagram Networks
+In a datagram network, each time an end system wants to send a packet, it stamps
+the packet with the address of the destination end system and then pops the packet
+into the network. As shown in Figure 4.5, there is no VC setup and routers do not
+maintain any VC state information (because there are no VCs!).
+As a packet is transmitted from source to destination, it passes through a series
+of routers. Each of these routers uses the packet’s destination address to forward the
+packet. Specifically, each router has a forwarding table that maps destination
+addresses to link interfaces; when a packet arrives at the router, the router uses the
+packet’s destination address to look up the appropriate output link interface in the
+forwarding table. The router then intentionally forwards the packet to that output
+link interface.
+To get some further insight into the lookup operation, let’s look at a specific
+example. Suppose that all destination addresses are 32 bits (which just happens to
+be the length of the destination address in an IP datagram). A brute-force implementation of the forwarding table would have one entry for every possible destination
+address. Since there are more than 4 billion possible addresses, this option is totally
+out of the question.
+4.2 • VIRTUAL CIRCUIT AND DATAGRAM NETWORKS 317
+Transport
+1. Send
+data
+2. Receive
+Data link data
+Physical
+Application
+Network
+Transport
+Data link
+Physical
+Application
+Network
+Figure 4.5  Datagram network
+Now let’s further suppose that our router has four links, numbered 0 through 3,
+and that packets are to be forwarded to the link interfaces as follows:
+Destination Address Range Link Interface
+11001000 00010111 00010000 00000000
+through 0
+11001000 00010111 00010111 11111111
+11001000 00010111 00011000 00000000
+through 1
+11001000 00010111 00011000 11111111
+11001000 00010111 00011001 00000000
+through 2
+11001000 00010111 00011111 11111111
+otherwise 3
+Clearly, for this example, it is not necessary to have 4 billion entries in the router’s
+forwarding table. We could, for example, have the following forwarding table with
+just four entries:
+Prefix Match Link Interface
+11001000 00010111 00010 0
+11001000 00010111 00011000 1
+11001000 00010111 00011 2
+otherwise 3
+With this style of forwarding table, the router matches a prefix of the packet’s destination address with the entries in the table; if there’s a match, the router forwards
+the packet to a link associated with the match. For example, suppose the packet’s
+destination address is 11001000 00010111 00010110 10100001; because the 21-bit
+prefix of this address matches the first entry in the table, the router forwards the
+packet to link interface 0. If a prefix doesn’t match any of the first three entries, then
+the router forwards the packet to interface 3. Although this sounds simple enough,
+there’s an important subtlety here. You may have noticed that it is possible for a destination address to match more than one entry. For example, the first 24 bits of the
+address 11001000 00010111 00011000 10101010 match the second entry in the
+table, and the first 21 bits of the address match the third entry in the table. When
+there are multiple matches, the router uses the longest prefix matching rule; that
+is, it finds the longest matching entry in the table and forwards the packet to the link
+318 CHAPTER 4 • THE NETWORK LAYER
+interface associated with the longest prefix match. We’ll see exactly why this
+longest prefix-matching rule is used when we study Internet addressing in more
+detail in Section 4.4.
+Although routers in datagram networks maintain no connection state information, they nevertheless maintain forwarding state information in their forwarding
+tables. However, the time scale at which this forwarding state information changes
+is relatively slow. Indeed, in a datagram network the forwarding tables are modified
+by the routing algorithms, which typically update a forwarding table every one-tofive minutes or so. In a VC network, a forwarding table in a router is modified
+whenever a new connection is set up through the router or whenever an existing
+connection through the router is torn down. This could easily happen at a microsecond timescale in a backbone, tier-1 router.
+Because forwarding tables in datagram networks can be modified at any time, a
+series of packets sent from one end system to another may follow different paths
+through the network and may arrive out of order. [Paxson 1997] and [Jaiswal 2003]
+present interesting measurement studies of packet reordering and other phenomena
+in the public Internet.

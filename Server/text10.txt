@@ -1,0 +1,278 @@
+This is text 10
+P52. Consider a network in which all nodes are connected to three other nodes. In
+a single time step, a node can receive all transmitted broadcast packets from
+its neighbors, duplicate the packets, and send them to all of its neighbors
+(except to the node that sent a given packet). At the next time step, neighboring
+nodes can receive, duplicate, and forward these packets, and so on. Suppose that uncontrolled flooding is used to provide broadcast in such a
+network. At time step t, how many copies of the broadcast packet will be
+transmitted, assuming that during time step 1, a single broadcast packet is
+transmitted by the source node to its three neighbors.
+P53. We saw in Section 4.7 that there is no network-layer protocol that can be used
+to identify the hosts participating in a multicast group. Given this, how can
+multicast applications learn the identities of the hosts that are participating in
+a multicast group?
+P54. Design (give a pseudocode description of) an application-level protocol that
+maintains the host addresses of all hosts participating in a multicast group.
+Specifically identify the network service (unicast or multicast) that is used by
+your protocol, and indicate whether your protocol is sending messages inband or out-of-band (with respect to the application data flow among the
+multicast group participants) and why.
+P55. What is the size of the multicast address space? Suppose now that two multicast groups randomly choose a multicast address. What is the probability that
+they choose the same address? Suppose now that 1,000 multicast groups are
+ongoing at the same time and choose their multicast group addresses at random. What is the probability that they interfere with each other?
+Socket Programming Assignment
+At the end of Chapter 2, there are four socket programming assignments. Below,
+you will find a fifth assignment which employs ICMP, a protocol discussed in this
+chapter.
+Assignment 5: ICMP Ping
+Ping is a popular networking application used to test from a remote location whether
+a particular host is up and reachable. It is also often used to measure latency
+between the client host and the target host. It works by sending ICMP “echo
+request” packets (i.e., ping packets) to the target host and listening for ICMP “echo
+response” replies (i.e., pong packets). Ping measures the RRT, records packet loss,
+and calculates a statistical summary of multiple ping-pong exchanges (the minimum, mean, max, and standard deviation of the round-trip times).
+428 CHAPTER 4 • THE NETWORK LAYER
+In this lab, you will write your own Ping application in Python. Your application
+will use ICMP. But in order to keep your program simple, you will not exactly follow
+the official specification in RFC 1739. Note that you will only need to write the client
+side of the program, as the functionality needed on the server side is built into almost
+all operating systems. You can find full details of this assignment, as well as important snippets of the Python code, at the Web site http://www.awl.com/kurose-ross.
+Programming Assignment
+In this programming assignment, you will be writing a “distributed” set of procedures that implements a distributed asynchronous distance-vector routing for the
+network shown below.
+You are to write the following routines that will “execute” asynchronously
+within the emulated environment provided for this assignment. For node 0, you will
+write the routines:
+• rtinit0(). This routine will be called once at the beginning of the emulation.
+rtinit0() has no arguments. It should initialize your distance table in node 0 to
+reflect the direct costs of 1, 3, and 7 to nodes 1, 2, and 3, respectively. In the figure above, all links are bidirectional and the costs in both directions are identical. After initializing the distance table and any other data structures needed by
+your node 0 routines, it should then send its directly connected neighbors (in
+this case, 1, 2, and 3) the cost of its minimum-cost paths to all other network
+nodes. This minimum-cost information is sent to neighboring nodes in a routing
+update packet by calling the routine tolayer2(), as described in the full assignment. The format of the routing update packet is also described in the full
+assignment.
+• rtupdate0(struct rtpkt *rcvdpkt). This routine will be called when node 0
+receives a routing packet that was sent to it by one of its directly connected
+neighbors. The parameter *rcvdpkt is a pointer to the packet that was received.
+rtupdate0() is the “heart” of the distance-vector algorithm. The values it
+receives in a routing update packet from some other node i contain i’s current
+shortest-path costs to all other network nodes. rtupdate0() uses these received
+3 2
+0
+1
+7
+3 1
+2
+1
+PROGRAMMING ASSIGNMENT 429
+values to update its own distance table (as specified by the distance-vector algorithm). If its own minimum cost to another node changes as a result of the
+update, node 0 informs its directly connected neighbors of this change in minimum cost by sending them a routing packet. Recall that in the distance-vector
+algorithm, only directly connected nodes will exchange routing packets. Thus,
+nodes 1 and 2 will communicate with each other, but nodes 1 and 3 will not
+communicate with each other.
+Similar routines are defined for nodes 1, 2, and 3. Thus, you will write eight procedures in all: rtinit0(), rtinit1(), rtinit2(), rtinit3(), rtupdate0(), rtupdate1(), rtupdate2(), and rtupdate3(). These routines will together implement a distributed,
+asynchronous computation of the distance tables for the topology and costs shown
+in the figure on the preceding page.
+You can find the full details of the programming assignment, as well as C code
+that you will need to create the simulated hardware/software environment, at
+http://www.awl.com/kurose-ross. A Java version of the assignment is also available.
+Wireshark Labs
+In the companion Web site for this textbook, http://www.awl.com/kurose-ross,
+you’ll find two Wireshark lab assignments. The first lab examines the operation of
+the IP protocol, and the IP datagram format in particular. The second lab explores
+the use of the ICMP protocol in the ping and traceroute commands.
+430 CHAPTER 4 • THE NETWORK LAYER
+What brought you to specialize in networking?
+I was working as a programmer at UCLA in the late 1960s. My job was supported by the
+US Defense Advanced Research Projects Agency (called ARPA then, called DARPA now). I
+was working in the laboratory of Professor Leonard Kleinrock on the Network
+Measurement Center of the newly created ARPAnet. The first node of the ARPAnet was
+installed at UCLA on September 1, 1969. I was responsible for programming a computer
+that was used to capture performance information about the ARPAnet and to report this
+information back for comparison with mathematical models and predictions of the performance of the network.
+Several of the other graduate students and I were made responsible for working on
+the so-called host-level protocols of the ARPAnet—the procedures and formats that would
+allow many different kinds of computers on the network to interact with each other. It was a
+fascinating exploration into a new world (for me) of distributed computing and communication.
+Did you imagine that IP would become as pervasive as it is today when you first designed
+the protocol?
+When Bob Kahn and I first worked on this in 1973, I think we were mostly very focused on
+the central question: How can we make heterogeneous packet networks interoperate with
+one another, assuming we cannot actually change the networks themselves? We hoped that
+we could find a way to permit an arbitrary collection of packet-switched networks to be
+interconnected in a transparent fashion, so that host computers could communicate end-toend without having to do any translations in between. I think we knew that we were dealing
+with powerful and expandable technology but I doubt we had a clear image of what the
+world would be like with hundreds of millions of computers all interlinked on the Internet.
+431
+Vinton G. Cerf
+Vinton G. Cerf is Vice President and Chief Internet Evangelist for
+Google. He served for over 16 years at MCI in various positions,
+ending up his tenure there as Senior Vice President for Technology
+Strategy. He is widely known as the co-designer of the TCP/IP
+protocols and the architecture of the Internet. During his time from
+1976 to 1982 at the US Department of Defense Advanced
+Research Projects Agency (DARPA), he played a key role leading the
+development of Internet and Internet-related data packet and security
+techniques. He received the US Presidential Medal of Freedom in
+2005 and the US National Medal of Technology in 1997. He
+holds a BS in Mathematics from Stanford University and an MS and
+PhD in computer science from UCLA.
+AN INTERVIEW WITH...
+What do you now envision for the future of networking and the Internet? What major
+challenges/obstacles do you think lie ahead in their development?
+I believe the Internet itself and networks in general will continue to proliferate. Already
+there is convincing evidence that there will be billions of Internet-enabled devices on the
+Internet, including appliances like cell phones, refrigerators, personal digital assistants,
+home servers, televisions, as well as the usual array of laptops, servers, and so on. Big challenges include support for mobility, battery life, capacity of the access links to the network,
+and ability to scale the optical core of the network up in an unlimited fashion. Designing an
+interplanetary extension of the Internet is a project in which I am deeply engaged at the Jet
+Propulsion Laboratory. We will need to cut over from IPv4 [32-bit addresses] to IPv6 [128
+bits]. The list is long!
+Who has inspired you professionally?
+My colleague Bob Kahn; my thesis advisor, Gerald Estrin; my best friend, Steve Crocker
+(we met in high school and he introduced me to computers in 1960!); and the thousands of
+engineers who continue to evolve the Internet today.
+Do you have any advice for students entering the networking/Internet field?
+Think outside the limitations of existing systems—imagine what might be possible; but then
+do the hard work of figuring out how to get there from the current state of affairs. Dare to
+dream: A half dozen colleagues and I at the Jet Propulsion Laboratory have been working
+on the design of an interplanetary extension of the terrestrial Internet. It may take decades to
+implement this, mission by mission, but to paraphrase: “A man’s reach should exceed his
+grasp, or what are the heavens for?”
+432
+CHAPTER 5
+The Link Layer:
+Links, Access
+Networks, and
+LANs
+433
+In the previous chapter, we learned that the network layer provides a communication service between any two network hosts. Between the two hosts, datagrams
+travel over a series of communication links, some wired and some wireless, starting
+at the source host, passing through a series of packet switches (switches and routers)
+and ending at the destination host. As we continue down the protocol stack, from the
+network layer to the link layer, we naturally wonder how packets are sent across
+the individual links that make up the end-to-end communication path. How are the
+network-layer datagrams encapsulated in the link-layer frames for transmission over
+a single link? Are different link-layer protocols used in the different links along the
+communication path? How are transmission conflicts in broadcast links resolved? Is
+there addressing at the link layer and, if so, how does the link-layer addressing operate with the network-layer addressing we learned about in Chapter 4? And what
+exactly is the difference between a switch and a router? We’ll answer these and
+other important questions in this chapter.
+In discussing the link layer, we’ll see that there are two fundamentally different
+types of link-layer channels. The first type are broadcast channels, which connect multiple hosts in wireless LANs, satellite networks, and hybrid fiber-coaxial cable (HFC)
+434 CHAPTER 5 • THE LINK LAYER: LINKS, ACCESS NETWORKS, AND LANS
+access networks. Since many hosts are connected to the same broadcast communication channel, a so-called medium access protocol is needed to coordinate frame
+transmission. In some cases, a central controller may be used to coordinate transmissions; in other cases, the hosts themselves coordinate transmissions. The second type
+of link-layer channel is the point-to-point communication link, such as that often
+found between two routers connected by a long-distance link, or between a user’s
+office computer and the nearby Ethernet switch to which it is connected. Coordinating
+access to a point-to-point link is simpler; the reference material on this book’s web site
+has a detailed discussion of the Point-to-Point Protocol (PPP), which is used in settings ranging from dial-up service over a telephone line to high-speed point-to-point
+frame transport over fiber-optic links.
+We’ll explore several important link-layer concepts and technologies in this chapter. We’ll dive deeper into error detection and correction, a topic we touched on briefly
+in Chapter 3. We’ll consider multiple access networks and switched LANs, including
+Ethernet—by far the most prevalent wired LAN technology. We’ll also look at virtual
+LANs, and data center networks. Although WiFi, and more generally wireless LANs,
+are link-layer topics, we’ll postpone our study of these important topics until Chapter 6.
+5.1 Introduction to the Link Layer
+Let’s begin with some important terminology. We’ll find it convenient in this chapter to
+refer to any device that runs a link-layer (i.e., layer 2) protocol as a node. Nodes include
+hosts, routers, switches, and WiFi access points (discussed in Chapter 6). We will
+also refer to the communication channels that connect adjacent nodes along the communication path as links. In order for a datagram to be transferred from source host to
+destination host, it must be moved over each of the individual links in the end-to-end
+path. As an example, in the company network shown at the bottom of Figure 5.1, consider sending a datagram from one of the wireless hosts to one of the servers. This datagram will actually pass through six links: a WiFi link between sending host and WiFi
+access point, an Ethernet link between the access point and a link-layer switch; a link
+between the link-layer switch and the router, a link between the two routers; an
+Ethernet link between the router and a link-layer switch; and finally an Ethernet link
+between the switch and the server. Over a given link, a transmitting node encapsulates
+the datagram in a link-layer frame and transmits the frame into the link.
+In order to gain further insight into the link layer and how it relates to the network
+layer, let’s consider a transportation analogy. Consider a travel agent who is planning a
+trip for a tourist traveling from Princeton, New Jersey, to Lausanne, Switzerland. The
+travel agent decides that it is most convenient for the tourist to take a limousine from
+Princeton to JFK airport, then a plane from JFK airport to Geneva’s airport, and finally
+a train from Geneva’s airport to Lausanne’s train station. Once the travel agent makes
+the three reservations, it is the responsibility of the Princeton limousine company to get
+the tourist from Princeton to JFK; it is the responsibility of the airline company to
+5.1 • INTRODUCTION TO THE LINK LAYER 435
+Figure 5.1  Six link-layer hops between wireless host and server
+Mobile Network
+National or
+Global ISP
+Local or
+Regional ISP
+Enterprise Network
+Home Network
+get the tourist from JFK to Geneva; and it is the responsibility of the Swiss train service
+to get the tourist from Geneva to Lausanne. Each of the three segments of the trip
+is “direct” between two “adjacent” locations. Note that the three transportation segments are managed by different companies and use entirely different transportation
+modes (limousine, plane, and train). Although the transportation modes are different,
+they each provide the basic service of moving passengers from one location to an
+adjacent location. In this transportation analogy, the tourist is a datagram, each transportation segment is a link, the transportation mode is a link-layer protocol, and the
+travel agent is a routing protocol.
+5.1.1 The Services Provided by the Link Layer
+Although the basic service of any link layer is to move a datagram from one node to
+an adjacent node over a single communication link, the details of the provided service can vary from one link-layer protocol to the next. Possible services that can be
+offered by a link-layer protocol include:
+• Framing. Almost all link-layer protocols encapsulate each network-layer datagram within a link-layer frame before transmission over the link. A frame consists of a data field, in which the network-layer datagram is inserted, and a
+number of header fields. The structure of the frame is specified by the link-layer
+protocol. We’ll see several different frame formats when we examine specific
+link-layer protocols in the second half of this chapter.
+• Link access. A medium access control (MAC) protocol specifies the rules by which
+a frame is transmitted onto the link. For point-to-point links that have a single
+sender at one end of the link and a single receiver at the other end of the link, the
+MAC protocol is simple (or nonexistent)—the sender can send a frame whenever
+the link is idle. The more interesting case is when multiple nodes share a single
+broadcast link—the so-called multiple access problem. Here, the MAC protocol
+serves to coordinate the frame transmissions of the many nodes.
+• Reliable delivery. When a link-layer protocol provides reliable delivery service, it
+guarantees to move each network-layer datagram across the link without error.
+Recall that certain transport-layer protocols (such as TCP) also provide a reliable
+delivery service. Similar to a transport-layer reliable delivery service, a link-layer
+reliable delivery service can be achieved with acknowledgments and retransmissions (see Section 3.4). A link-layer reliable delivery service is often used for links
+that are prone to high error rates, such as a wireless link, with the goal of correcting
+an error locally—on the link where the error occurs—rather than forcing an end-toend retransmission of the data by a transport- or application-layer protocol. However, link-layer reliable delivery can be considered an unnecessary overhead for low
+bit-error links, including fiber, coax, and many twisted-pair copper links. For this
+reason, many wired link-layer protocols do not provide a reliable delivery service.
+436 CHAPTER 5 • THE LINK LAYER: LINKS, ACCESS NETWORKS, AND LANS
+• Error detection and correction. The link-layer hardware in a receiving node can
+incorrectly decide that a bit in a frame is zero when it was transmitted as a one,
+and vice versa. Such bit errors are introduced by signal attenuation and electromagnetic noise. Because there is no need to forward a datagram that has an error,
+many link-layer protocols provide a mechanism to detect such bit errors. This is
+done by having the transmitting node include error-detection bits in the frame,
+and having the receiving node perform an error check. Recall from Chapters 3
+and 4 that the Internet’s transport layer and network layer also provide a limited
+form of error detection—the Internet checksum. Error detection in the link layer
+is usually more sophisticated and is implemented in hardware. Error correction
+is similar to error detection, except that a receiver not only detects when bit
+errors have occurred in the frame but also determines exactly where in the frame
+the errors have occurred (and then corrects these errors).
+5.1.2 Where Is the Link Layer Implemented?
+Before diving into our detailed study of the link layer, let’s conclude this introduction by considering the question of where the link layer is implemented. We’ll focus
+here on an end system, since we learned in Chapter 4 that the link layer is implemented in a router’s line card. Is a host’s link layer implemented in hardware or software? Is it implemented on a separate card or chip, and how does it interface with
+the rest of a host’s hardware and operating system components?
+Figure 5.2 shows a typical host architecture. For the most part, the link layer is
+implemented in a network adapter, also sometimes known as a network interface
+card (NIC). At the heart of the network adapter is the link-layer controller, usually
+a single, special-purpose chip that implements many of the link-layer services
+(framing, link access, error detection, and so on). Thus, much of a link-layer controller’s functionality is implemented in hardware. For example, Intel’s 8254x controller [Intel 2012] implements the Ethernet protocols we’ll study in Section 5.5; the
+Atheros AR5006 [Atheros 2012] controller implements the 802.11 WiFi protocols
+we’ll study in Chapter 6. Until the late 1990s, most network adapters were physically separate cards (such as a PCMCIA card or a plug-in card fitting into a PC’s
+PCI card slot) but increasingly, network adapters are being integrated onto the host’s
+motherboard—a so-called LAN-on-motherboard configuration.
+On the sending side, the controller takes a datagram that has been created and
+stored in host memory by the higher layers of the protocol stack, encapsulates the
+datagram in a link-layer frame (filling in the frame’s various fields), and then
+transmits the frame into the communication link, following the link-access protocol. On the receiving side, a controller receives the entire frame, and extracts the
+network-layer datagram. If the link layer performs error detection, then it is
+the sending controller that sets the error-detection bits in the frame header and it
+is the receiving controller that performs error detection.
+5.1 • INTRODUCTION TO THE LINK LAYER 437
+Figure 5.2 shows a network adapter attaching to a host’s bus (e.g., a PCI or
+PCI-X bus), where it looks much like any other I/O device to the other host components. Figure 5.2 also shows that while most of the link layer is implemented in
+hardware, part of the link layer is implemented in software that runs on the host’s
+CPU. The software components of the link layer implement higher-level linklayer functionality such as assembling link-layer addressing information and activating the controller hardware. On the receiving side, link-layer software responds
+to controller interrupts (e.g., due to the receipt of one or more frames), handling
+error conditions and passing a datagram up to the network layer. Thus, the link
+layer is a combination of hardware and software—the place in the protocol stack
+where software meets hardware. Intel [2012] provides a readable overview (as
+well as a detailed description) of the 8254x controller from a software-programming point of view.

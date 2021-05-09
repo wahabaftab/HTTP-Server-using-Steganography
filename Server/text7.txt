@@ -1,0 +1,741 @@
+This is text 7
+When a node running the DV algorithm detects a change in the link cost from itself to
+a neighbor (Lines 10–11), it updates its distance vector (Lines 13–14) and, if there’s a
+change in the cost of the least-cost path, informs its neighbors (Lines 16–17) of its new
+distance vector. Figure 4.31(a) illustrates a scenario where the link cost from y to x
+changes from 4 to 1. We focus here only on y’ and z’s distance table entries to destination x. The DV algorithm causes the following sequence of events to occur:
+• At time t
+0, y detects the link-cost change (the cost has changed from 4 to 1),
+updates its distance vector, and informs its neighbors of this change since its distance vector has changed.
+• At time t
+1, z receives the update from y and updates its table. It computes a new
+least cost to x (it has decreased from a cost of 5 to a cost of 2) and sends its new
+distance vector to its neighbors.
+• At time t
+2, y receives z’s update and updates its distance table. y’s least costs do
+not change and hence y does not send any message to z. The algorithm comes to
+a quiescent state.
+Thus, only two iterations are required for the DV algorithm to reach a quiescent
+state. The good news about the decreased cost between x and y has propagated
+quickly through the network.
+Let’s now consider what can happen when a link cost increases. Suppose that
+the link cost between x and y increases from 4 to 60, as shown in Figure 4.31(b).
+1. Before the link cost changes, D
+y
+(x) = 4, D
+y
+(z) = 1, D
+z
+(y) = 1, and D
+z
+(x) = 5. At
+time t
+0, y detects the link-cost change (the cost has changed from 4 to 60). y
+computes its new minimum-cost path to x to have a cost of
+D
+y
+(x) = min{c(y,x) + D
+x
+(x), c(y,z) + D
+z
+(x)} = min{60 + 0, 1 + 5} = 6
+376 CHAPTER 4 • THE NETWORK LAYER
+50
+4
+1 60
+1
+y
+x
+a. b.
+z
+50
+4 1
+y
+x z
+Figure 4.31  Changes in link cost
+Of course, with our global view of the network, we can see that this new cost
+via z is wrong. But the only information node y has is that its direct cost to x is
+60 and that z has last told y that z could get to x with a cost of 5. So in order to
+get to x, y would now route through z, fully expecting that z will be able to get
+to x with a cost of 5. As of t
+1 we have a routing loop—in order to get to x, y
+routes through z, and z routes through y. A routing loop is like a black hole—a
+packet destined for x arriving at y or z as of t1 will bounce back and forth
+between these two nodes forever (or until the forwarding tables are changed).
+2. Since node y has computed a new minimum cost to x, it informs z of its new
+distance vector at time t
+1.
+3. Sometime after t
+1, z receives y’s new distance vector, which indicates that y’s
+minimum cost to x is 6. z knows it can get to y with a cost of 1 and hence
+computes a new least cost to x of D
+z
+(x) = min{50 + 0,1 + 6} = 7. Since z’s
+least cost to x has increased, it then informs y of its new distance vector at t2.
+4. In a similar manner, after receiving z’s new distance vector, y determines
+D
+y
+(x) = 8 and sends z its distance vector. z then determines D
+z
+(x) = 9 and
+sends y its distance vector, and so on.
+How long will the process continue? You should convince yourself that the loop
+will persist for 44 iterations (message exchanges between y and z)—until z eventually computes the cost of its path via y to be greater than 50. At this point, z will
+(finally!) determine that its least-cost path to x is via its direct connection to x. y
+will then route to x via z. The result of the bad news about the increase in link
+cost has indeed traveled slowly! What would have happened if the link cost c(y,
+x) had changed from 4 to 10,000 and the cost c(z, x) had been 9,999? Because of
+such scenarios, the problem we have seen is sometimes referred to as the countto-infinity problem.
+Distance-Vector Algorithm: Adding Poisoned Reverse
+The specific looping scenario just described can be avoided using a technique
+known as poisoned reverse. The idea is simple—if z routes through y to get to
+destination x, then z will advertise to y that its distance to x is infinity, that is, z will
+advertise to y that D
+z
+(x) = 8 (even though z knows D
+z
+(x) = 5 in truth). z will continue telling this little white lie to y as long as it routes to x via y. Since y believes
+that z has no path to x, y will never attempt to route to x via z, as long as z continues
+to route to x via y (and lies about doing so).
+Let’s now see how poisoned reverse solves the particular looping problem we
+encountered before in Figure 4.31(b). As a result of the poisoned reverse, y’s distance table indicates D
+z
+(x) = 8. When the cost of the (x, y) link changes from 4 to 60
+at time t
+0, y updates its table and continues to route directly to x, albeit at a higher
+cost of 60, and informs z of its new cost to x, that is, D
+y
+(x) = 60. After receiving the
+4.5 • ROUTING ALGORITHMS 377
+update at t1, z immediately shifts its route to x to be via the direct (z, x) link at a cost
+of 50. Since this is a new least-cost path to x, and since the path no longer passes
+through y, z now informs y that D
+z
+(x) = 50 at t2. After receiving the update from z, y
+updates its distance table with D
+y
+(x) = 51. Also, since z is now on y’s least-cost path
+to x, y poisons the reverse path from z to x by informing z at time t3 that Dy(x) = 8
+(even though y knows that D
+y
+(x) = 51 in truth).
+Does poisoned reverse solve the general count-to-infinity problem? It does not.
+You should convince yourself that loops involving three or more nodes (rather than
+simply two immediately neighboring nodes) will not be detected by the poisoned
+reverse technique.
+A Comparison of LS and DV Routing Algorithms
+The DV and LS algorithms take complementary approaches towards computing
+routing. In the DV algorithm, each node talks to only its directly connected neighbors, but it provides its neighbors with least-cost estimates from itself to all the
+nodes (that it knows about) in the network. In the LS algorithm, each node talks with
+all other nodes (via broadcast), but it tells them only the costs of its directly connected links. Let’s conclude our study of LS and DV algorithms with a quick comparison of some of their attributes. Recall that N is the set of nodes (routers) and E
+is the set of edges (links).
+• Message complexity. We have seen that LS requires each node to know the
+cost of each link in the network. This requires O(|N| |E|) messages to be sent.
+Also, whenever a link cost changes, the new link cost must be sent to all
+nodes. The DV algorithm requires message exchanges between directly connected neighbors at each iteration. We have seen that the time needed for the
+algorithm to converge can depend on many factors. When link costs change,
+the DV algorithm will propagate the results of the changed link cost only if
+the new link cost results in a changed least-cost path for one of the nodes
+attached to that link.
+• Speed of convergence. We have seen that our implementation of LS is an O(|N|2)
+algorithm requiring O(|N| |E|)) messages. The DV algorithm can converge slowly
+and can have routing loops while the algorithm is converging. DV also suffers
+from the count-to-infinity problem.
+• Robustness. What can happen if a router fails, misbehaves, or is sabotaged?
+Under LS, a router could broadcast an incorrect cost for one of its attached
+links (but no others). A node could also corrupt or drop any packets it received
+as part of an LS broadcast. But an LS node is computing only its own forwarding tables; other nodes are performing similar calculations for themselves. This
+means route calculations are somewhat separated under LS, providing a degree
+of robustness. Under DV, a node can advertise incorrect least-cost paths to any
+or all destinations. (Indeed, in 1997, a malfunctioning router in a small ISP
+378 CHAPTER 4 • THE NETWORK LAYER
+provided national backbone routers with erroneous routing information. This
+caused other routers to flood the malfunctioning router with traffic and caused
+large portions of the Internet to become disconnected for up to several hours
+[Neumann 1997].) More generally, we note that, at each iteration, a node’s calculation in DV is passed on to its neighbor and then indirectly to its neighbor’s
+neighbor on the next iteration. In this sense, an incorrect node calculation can
+be diffused through the entire network under DV.
+In the end, neither algorithm is an obvious winner over the other; indeed, both algorithms are used in the Internet.
+Other Routing Algorithms
+The LS and DV algorithms we have studied are not only widely used in practice,
+they are essentially the only routing algorithms used in practice today in the Internet. Nonetheless, many routing algorithms have been proposed by researchers
+over the past 30 years, ranging from the extremely simple to the very sophisticated
+and complex. A broad class of routing algorithms is based on viewing packet traffic as flows between sources and destinations in a network. In this approach, the
+routing problem can be formulated mathematically as a constrained optimization
+problem known as a network flow problem [Bertsekas 1991]. Yet another set of
+routing algorithms we mention here are those derived from the telephony world.
+These circuit-switched routing algorithms are of interest to packet-switched
+data networking in cases where per-link resources (for example, buffers, or a fraction of the link bandwidth) are to be reserved for each connection that is routed
+over the link. While the formulation of the routing problem might appear quite
+different from the least-cost routing formulation we have seen in this chapter,
+there are a number of similarities, at least as far as the path-finding algorithm
+(routing algorithm) is concerned. See [Ash 1998; Ross 1995; Girard 1990] for a
+detailed discussion of this research area.
+4.5.3 Hierarchical Routing
+In our study of LS and DV algorithms, we’ve viewed the network simply as a collection of interconnected routers. One router was indistinguishable from another in
+the sense that all routers executed the same routing algorithm to compute routing
+paths through the entire network. In practice, this model and its view of a homogenous set of routers all executing the same routing algorithm is a bit simplistic for at
+least two important reasons:
+• Scale. As the number of routers becomes large, the overhead involved in
+computing, storing, and communicating routing information (for example,
+4.5 • ROUTING ALGORITHMS 379
+LS updates or least-cost path changes) becomes prohibitive. Today’s public
+Internet consists of hundreds of millions of hosts. Storing routing information at
+each of these hosts would clearly require enormous amounts of memory. The
+overhead required to broadcast LS updates among all of the routers in the public
+Internet would leave no bandwidth left for sending data packets! A distance-vector algorithm that iterated among such a large number of routers would surely
+never converge. Clearly, something must be done to reduce the complexity of
+route computation in networks as large as the public Internet.
+• Administrative autonomy. Although researchers tend to ignore issues such as a
+company’s desire to run its routers as it pleases (for example, to run whatever
+routing algorithm it chooses) or to hide aspects of its network’s internal organization from the outside, these are important considerations. Ideally, an organization should be able to run and administer its network as it wishes, while still
+being able to connect its network to other outside networks.
+Both of these problems can be solved by organizing routers into autonomous systems (ASs), with each AS consisting of a group of routers that are typically under
+the same administrative control (e.g., operated by the same ISP or belonging to the
+same company network). Routers within the same AS all run the same routing algorithm (for example, an LS or DV algorithm) and have information about each
+other—exactly as was the case in our idealized model in the preceding section. The
+routing algorithm running within an autonomous system is called an intraautonomous system routing protocol. It will be necessary, of course, to connect
+ASs to each other, and thus one or more of the routers in an AS will have the added
+task of being responsible for forwarding packets to destinations outside the AS;
+these routers are called gateway routers.
+Figure 4.32 provides a simple example with three ASs: AS1, AS2, and AS3.
+In this figure, the heavy lines represent direct link connections between pairs of
+routers. The thinner lines hanging from the routers represent subnets that are
+directly connected to the routers. AS1 has four routers—1a, 1b, 1c, and 1d—
+which run the intra-AS routing protocol used within AS1. Thus, each of these
+four routers knows how to forward packets along the optimal path to any destination within AS1. Similarly, autonomous systems AS2 and AS3 each have three
+routers. Note that the intra-AS routing protocols running in AS1, AS2, and AS3
+need not be the same. Also note that the routers 1b, 1c, 2a, and 3a are all gateway
+routers.
+It should now be clear how the routers in an AS determine routing paths for
+source-destination pairs that are internal to the AS. But there is still a big missing
+piece to the end-to-end routing puzzle. How does a router, within some AS, know
+how to route a packet to a destination that is outside the AS? It’s easy to answer
+this question if the AS has only one gateway router that connects to only one
+other AS. In this case, because the AS’s intra-AS routing algorithm has determined the least-cost path from each internal router to the gateway router, each
+380 CHAPTER 4 • THE NETWORK LAYER
+internal router knows how it should forward the packet. The gateway router, upon
+receiving the packet, forwards the packet on the one link that leads outside the
+AS. The AS on the other side of the link then takes over the responsibility
+of routing the packet to its ultimate destination. As an example, suppose router
+2b in Figure 4.32 receives a packet whose destination is outside of AS2. Router
+2b will then forward the packet to either router 2a or 2c, as specified by router
+2b’s forwarding table, which was configured by AS2’s intra-AS routing protocol.
+The packet will eventually arrive to the gateway router 2a, which will forward
+the packet to 1b. Once the packet has left 2a, AS2’s job is done with this one
+packet.
+So the problem is easy when the source AS has only one link that leads outside
+the AS. But what if the source AS has two or more links (through two or more gateway routers) that lead outside the AS? Then the problem of knowing where to forward the packet becomes significantly more challenging. For example, consider a
+router in AS1 and suppose it receives a packet whose destination is outside the AS.
+The router should clearly forward the packet to one of its two gateway routers, 1b or
+1c, but which one? To solve this problem, AS1 needs (1) to learn which destinations
+are reachable via AS2 and which destinations are reachable via AS3, and (2) to
+propagate this reachability information to all the routers within AS1, so that each
+router can configure its forwarding table to handle external-AS destinations. These
+4.5 • ROUTING ALGORITHMS 381
+AS1
+AS3
+3b
+3c
+3a
+1a
+1c
+1b
+1d
+AS2
+2a
+2c
+2b
+Intra-AS routing
+algorithm
+Forwarding
+table
+Inter-AS routing
+algorithm
+Figure 4.32  An example of interconnected autonomous systems
+two tasks—obtaining reachability information from neighboring ASs and propagating the reachability information to all routers internal to the AS—are handled by the
+inter-AS routing protocol. Since the inter-AS routing protocol involves communication between two ASs, the two communicating ASs must run the same inter-AS
+routing protocol. In fact, in the Internet all ASs run the same inter-AS routing protocol, called BGP4, which is discussed in the next section. As shown in Figure 4.32,
+each router receives information from an intra-AS routing protocol and an inter-AS
+routing protocol, and uses the information from both protocols to configure its forwarding table.
+As an example, consider a subnet x (identified by its CIDRized address), and
+suppose that AS1 learns from the inter-AS routing protocol that subnet x is reachable from AS3 but is not reachable from AS2. AS1 then propagates this information
+to all of its routers. When router 1d learns that subnet x is reachable from AS3, and
+hence from gateway 1c, it then determines, from the information provided by the
+intra-AS routing protocol, the router interface that is on the least-cost path from
+router 1d to gateway router 1c. Say this is interface I. The router 1d can then put the
+entry (x, I) into its forwarding table. (This example, and others presented in this section, gets the general ideas across but is a simplification of what really happens in
+the Internet. In the next section we’ll provide a more detailed description, albeit
+more complicated, when we discuss BGP.)
+Following up on the previous example, now suppose that AS2 and AS3 connect to other ASs, which are not shown in the diagram. Also suppose that AS1
+learns from the inter-AS routing protocol that subnet x is reachable both from AS2,
+via gateway 1b, and from AS3, via gateway 1c. AS1 would then propagate this
+information to all its routers, including router 1d. In order to configure its forwarding table, router 1d would have to determine to which gateway router, 1b or 1c, it
+should direct packets that are destined for subnet x. One approach, which is often
+employed in practice, is to use hot-potato routing. In hot-potato routing, the AS
+gets rid of the packet (the hot potato) as quickly as possible (more precisely, as
+inexpensively as possible). This is done by having a router send the packet to the
+gateway router that has the smallest router-to-gateway cost among all gateways
+with a path to the destination. In the context of the current example, hot-potato
+routing, running in 1d, would use information from the intra-AS routing protocol
+to determine the path costs to 1b and 1c, and then choose the path with the least
+cost. Once this path is chosen, router 1d adds an entry for subnet x in its forwarding table. Figure 4.33 summarizes the actions taken at router 1d for adding the new
+entry for x to the forwarding table.
+When an AS learns about a destination from a neighboring AS, the AS can
+advertise this routing information to some of its other neighboring ASs. For example,
+suppose AS1 learns from AS2 that subnet x is reachable via AS2. AS1 could then tell
+AS3 that x is reachable via AS1. In this manner, if AS3 needs to route a packet
+destined to x, AS3 would forward the packet to AS1, which would in turn forward the
+packet to AS2. As we’ll see in our discussion of BGP, an AS has quite a bit of
+382 CHAPTER 4 • THE NETWORK LAYER
+flexibility in deciding which destinations it advertises to its neighboring ASs. This
+is a policy decision, typically depending more on economic issues than on technical
+issues.
+Recall from Section 1.5 that the Internet consists of a hierarchy of interconnected ISPs. So what is the relationship between ISPs and ASs? You might think that
+the routers in an ISP, and the links that interconnect them, constitute a single AS.
+Although this is often the case, many ISPs partition their network into multiple ASs.
+For example, some tier-1 ISPs use one AS for their entire network; others break up
+their ISP into tens of interconnected ASs.
+In summary, the problems of scale and administrative authority are solved by
+defining autonomous systems. Within an AS, all routers run the same intra-AS routing protocol. Among themselves, the ASs run the same inter-AS routing protocol.
+The problem of scale is solved because an intra-AS router need only know about
+routers within its AS. The problem of administrative authority is solved since an
+organization can run whatever intra-AS routing protocol it chooses; however, each
+pair of connected ASs needs to run the same inter-AS routing protocol to exchange
+reachability information.
+In the following section, we’ll examine two intra-AS routing protocols (RIP and
+OSPF) and the inter-AS routing protocol (BGP) that are used in today’s Internet.
+These case studies will nicely round out our study of hierarchical routing.
+4.6 Routing in the Internet
+Having studied Internet addressing and the IP protocol, we now turn our attention to
+the Internet’s routing protocols; their job is to determine the path taken by a datagram between source and destination. We’ll see that the Internet’s routing protocols
+embody many of the principles we learned earlier in this chapter. The link-state and
+distance-vector approaches studied in Sections 4.5.1 and 4.5.2 and the notion of an
+autonomous system considered in Section 4.5.3 are all central to how routing is
+done in today’s Internet.
+4.6 • ROUTING IN THE INTERNET 383
+Learn from inter-AS
+protocol that subnet
+x is reachable via
+multiple gateways.
+Use routing info from
+intra-AS protocol to
+determine costs of
+least-cost paths to
+each of the gateways.
+Hot potato routing:
+Choose the gateway
+that has the
+smallest least cost.
+Determine from
+forwarding table the
+interface I that leads
+to least-cost gateway.
+Enter (x,I) in
+forwarding table.
+Figure 4.33  Steps in adding an outside-AS destination in a router’s forwarding table
+Recall from Section 4.5.3 that an autonomous system (AS) is a collection of
+routers under the same administrative and technical control, and that all run the
+same routing protocol among themselves. Each AS, in turn, typically contains multiple subnets (where we use the term subnet in the precise, addressing sense in Section 4.4.2).
+4.6.1 Intra-AS Routing in the Internet: RIP
+An intra-AS routing protocol is used to determine how routing is performed within
+an autonomous system (AS). Intra-AS routing protocols are also known as interior
+gateway protocols. Historically, two routing protocols have been used extensively
+for routing within an autonomous system in the Internet: the Routing Information
+Protocol (RIP) and Open Shortest Path First (OSPF). A routing protocol closely
+related to OSPF is the IS-IS protocol [RFC 1142, Perlman 1999]. We first discuss
+RIP and then consider OSPF.
+RIP was one of the earliest intra-AS Internet routing protocols and is still in
+widespread use today. It traces its origins and its name to the Xerox Network Systems (XNS) architecture. The widespread deployment of RIP was due in great part
+to its inclusion in 1982 in the Berkeley Software Distribution (BSD) version of
+UNIX supporting TCP/IP. RIP version 1 is defined in [RFC 1058], with a backwardcompatible version 2 defined in [RFC 2453].
+RIP is a distance-vector protocol that operates in a manner very close to the
+idealized DV protocol we examined in Section 4.5.2. The version of RIP specified
+in RFC 1058 uses hop count as a cost metric; that is, each link has a cost of 1. In
+the DV algorithm in Section 4.5.2, for simplicity, costs were defined between pairs
+of routers. In RIP (and also in OSPF), costs are actually from source router to a destination subnet. RIP uses the term hop, which is the number of subnets traversed
+along the shortest path from source router to destination subnet, including the destination subnet. Figure 4.34 illustrates an AS with six leaf subnets. The table in the
+figure indicates the number of hops from the source A to each of the leaf subnets.
+The maximum cost of a path is limited to 15, thus limiting the use of RIP to
+autonomous systems that are fewer than 15 hops in diameter. Recall that in DV
+protocols, neighboring routers exchange distance vectors with each other. The
+distance vector for any one router is the current estimate of the shortest path
+distances from that router to the subnets in the AS. In RIP, routing updates
+are exchanged between neighbors approximately every 30 seconds using a
+RIP response message. The response message sent by a router or host contains
+a list of up to 25 destination subnets within the AS, as well as the sender’s
+distance to each of those subnets. Response messages are also known as RIP
+advertisements.
+Let’s take a look at a simple example of how RIP advertisements work. Consider the portion of an AS shown in Figure 4.35. In this figure, lines connecting the
+routers denote subnets. Only selected routers (A, B, C, and D) and subnets (w, x, y,
+384 CHAPTER 4 • THE NETWORK LAYER
+and z) are labeled. Dotted lines indicate that the AS continues on; thus this
+autonomous system has many more routers and links than are shown.
+Each router maintains a RIP table known as a routing table. A router’s routing
+table includes both the router’s distance vector and the router’s forwarding table.
+Figure 4.36 shows the routing table for router D. Note that the routing table has
+three columns. The first column is for the destination subnet, the second column
+indicates the identity of the next router along the shortest path to the destination subnet, and the third column indicates the number of hops (that is, the number of subnets that have to be traversed, including the destination subnet) to get to the
+destination subnet along the shortest path. For this example, the table indicates that
+to send a datagram from router D to destination subnet w, the datagram should first
+be forwarded to neighboring router A; the table also indicates that destination subnet w is two hops away along the shortest path. Similarly, the table indicates that
+subnet z is seven hops away via router B. In principle, a routing table will have one
+row for each subnet in the AS, although RIP version 2 allows subnet entries to be
+aggregated using route aggregation techniques similar to those we examined in
+4.6 • ROUTING IN THE INTERNET 385
+C D
+A
+u
+Destination Hops
+u v w x y z
+1 2 2 3 3 2
+v
+w
+x
+z y
+B
+Figure 4.34  Number of hops from source router A to various subnets
+A
+C
+D B
+z
+w x y
+Figure 4.35  A portion of an autonomous system
+Section 4.4. The table in Figure 4.36, and the subsequent tables to come, are only
+partially complete.
+Now suppose that 30 seconds later, router D receives from router A the advertisement shown in Figure 4.37. Note that this advertisement is nothing other than
+the routing table information from router A! This information indicates, in particular, that subnet z is only four hops away from router A. Router D, upon receiving this
+advertisement, merges the advertisement (Figure 4.37) with the old routing table
+(Figure 4.36). In particular, router D learns that there is now a path through router A
+to subnet z that is shorter than the path through router B. Thus, router D updates its
+routing table to account for the shorter shortest path, as shown in Figure 4.38. How
+is it, you might ask, that the shortest path to subnet z has become shorter? Possibly,
+the decentralized distance-vector algorithm is still in the process of converging (see
+Section 4.5.2), or perhaps new links and/or routers were added to the AS, thus
+changing the shortest paths in the AS.
+Let’s next consider a few of the implementation aspects of RIP. Recall that
+RIP routers exchange advertisements approximately every 30 seconds. If a router
+does not hear from its neighbor at least once every 180 seconds, that neighbor is
+considered to be no longer reachable; that is, either the neighbor has died or the
+386 CHAPTER 4 • THE NETWORK LAYER
+Destination Subnet Next Router Number of Hops to Destination
+w A 2
+y B 2
+z B 7
+x — 1
+. . . . . . . . . . . .
+Figure 4.36  Routing table in router D before receiving advertisement
+from router A
+Destination Subnet Next Router Number of Hops to Destination
+z C 4
+w — 1
+x — 1
+. . . . . . . . . . . .
+Figure 4.37  Advertisement from router A
+connecting link has gone down. When this happens, RIP modifies the local routing
+table and then propagates this information by sending advertisements to its neighboring routers (the ones that are still reachable). A router can also request information about its neighbor’s cost to a given destination using RIP’s request message.
+Routers send RIP request and response messages to each other over UDP using port
+number 520. The UDP segment is carried between routers in a standard IP datagram. The fact that RIP uses a transport-layer protocol (UDP) on top of a networklayer protocol (IP) to implement network-layer functionality (a routing algorithm)
+may seem rather convoluted (it is!). Looking a little deeper at how RIP is implemented will clear this up.
+Figure 4.39 sketches how RIP is typically implemented in a UNIX system, for
+example, a UNIX workstation serving as a router. A process called routed (pronounced
+“route dee”) executes RIP, that is, maintains routing information and exchanges
+messages with routed processes running in neighboring routers. Because RIP is
+implemented as an application-layer process (albeit a very special one that is able to
+4.6 • ROUTING IN THE INTERNET 387
+Destination Subnet Next Router Number of Hops to Destination
+w A 2
+y B 2
+z A 5
+. . . . . . . . . . . .
+Figure 4.38  Routing table in router D after receiving advertisement from
+router A
+Network
+(IP)
+Transport
+(UDP)
+Data link
+Physical
+Forwarding
+tables
+Routed
+Forwarding
+tables
+Routed
+Network
+(IP)
+Transport
+(UDP)
+Data link
+Physical
+Figure 4.39  Implementation of RIP as the routed daemon
+manipulate the routing tables within the UNIX kernel), it can send and receive messages over a standard socket and use a standard transport protocol. As shown, RIP is
+implemented as an application-layer protocol (see Chapter 2) running over UDP. If
+you’re interested in looking at an implementation of RIP (or the OSPF and BGP protocols that we will study shortly), see [Quagga 2012].
+4.6.2 Intra-AS Routing in the Internet: OSPF
+Like RIP, OSPF routing is widely used for intra-AS routing in the Internet. OSPF
+and its closely related cousin, IS-IS, are typically deployed in upper-tier ISPs
+whereas RIP is deployed in lower-tier ISPs and enterprise networks. The Open in
+OSPF indicates that the routing protocol specification is publicly available (for
+example, as opposed to Cisco’s EIGRP protocol). The most recent version of OSPF,
+version 2, is defined in RFC 2328, a public document.
+OSPF was conceived as the successor to RIP and as such has a number of
+advanced features. At its heart, however, OSPF is a link-state protocol that uses
+flooding of link-state information and a Dijkstra least-cost path algorithm. With
+OSPF, a router constructs a complete topological map (that is, a graph) of the entire
+autonomous system. The router then locally runs Dijkstra’s shortest-path algorithm
+to determine a shortest-path tree to all subnets, with itself as the root node. Individual link costs are configured by the network administrator (see Principles and Practice: Setting OSPF Weights). The administrator might choose to set all link costs to
+1, thus achieving minimum-hop routing, or might choose to set the link weights to
+be inversely proportional to link capacity in order to discourage traffic from using
+low-bandwidth links. OSPF does not mandate a policy for how link weights are set
+(that is the job of the network administrator), but instead provides the mechanisms
+(protocol) for determining least-cost path routing for the given set of link weights.
+With OSPF, a router broadcasts routing information to all other routers in the
+autonomous system, not just to its neighboring routers. A router broadcasts linkstate information whenever there is a change in a link’s state (for example, a change
+in cost or a change in up/down status). It also broadcasts a link’s state periodically
+(at least once every 30 minutes), even if the link’s state has not changed. RFC 2328
+notes that “this periodic updating of link state advertisements adds robustness to the
+link state algorithm.” OSPF advertisements are contained in OSPF messages that
+are carried directly by IP, with an upper-layer protocol of 89 for OSPF. Thus, the
+OSPF protocol must itself implement functionality such as reliable message transfer
+and link-state broadcast. The OSPF protocol also checks that links are operational
+(via a HELLO message that is sent to an attached neighbor) and allows an OSPF
+router to obtain a neighboring router’s database of network-wide link state.
+Some of the advances embodied in OSPF include the following:
+• Security. Exchanges between OSPF routers (for example, link-state updates)
+can be authenticated. With authentication, only trusted routers can participate
+388 CHAPTER 4 • THE NETWORK LAYER
+in the OSPF protocol within an AS, thus preventing malicious intruders (or networking students taking their newfound knowledge out for a joyride) from
+injecting incorrect information into router tables. By default, OSPF packets
+between routers are not authenticated and could be forged. Two types of
+authentication can be configured—simple and MD5 (see Chapter 8 for a discussion on MD5 and authentication in general). With simple authentication, the
+same password is configured on each router. When a router sends an OSPF
+packet, it includes the password in plaintext. Clearly, simple authentication is
+not very secure. MD5 authentication is based on shared secret keys that are
+configured in all the routers. For each OSPF packet that it sends, the router
+computes the MD5 hash of the content of the OSPF packet appended with the
+secret key. (See the discussion of message authentication codes in Chapter 7.)
+Then the router includes the resulting hash value in the OSPF packet. The
+receiving router, using the preconfigured secret key, will compute an MD5
+hash of the packet and compare it with the hash value that the packet carries,
+thus verifying the packet’s authenticity. Sequence numbers are also used with
+MD5 authentication to protect against replay attacks.
+• Multiple same-cost paths. When multiple paths to a destination have the same
+cost, OSPF allows multiple paths to be used (that is, a single path need not be
+chosen for carrying all traffic when multiple equal-cost paths exist).
+• Integrated support for unicast and multicast routing. Multicast OSPF (MOSPF)
+[RFC 1584] provides simple extensions to OSPF to provide for multicast routing
+(a topic we cover in more depth in Section 4.7.2). MOSPF uses the existing
+OSPF link database and adds a new type of link-state advertisement to the existing OSPF link-state broadcast mechanism.
+• Support for hierarchy within a single routing domain. Perhaps the most significant advance in OSPF is the ability to structure an autonomous system hierarchically. Section 4.5.3 has already looked at the many advantages of hierarchical
+routing structures. We cover the implementation of OSPF hierarchical routing in
+the remainder of this section.
+An OSPF autonomous system can be configured hierarchically into areas. Each
+area runs its own OSPF link-state routing algorithm, with each router in an area
+broadcasting its link state to all other routers in that area. Within each area, one or
+more area border routers are responsible for routing packets outside the area. Lastly,
+exactly one OSPF area in the AS is configured to be the backbone area. The primary
+role of the backbone area is to route traffic between the other areas in the AS. The
+backbone always contains all area border routers in the AS and may contain nonborder routers as well. Inter-area routing within the AS requires that the packet be first
+routed to an area border router (intra-area routing), then routed through the backbone to the area border router that is in the destination area, and then routed to the
+final destination.
+4.6 • ROUTING IN THE INTERNET 389
+OSPF is a relatively complex protocol, and our coverage here has been necessarily brief; [Huitema 1998; Moy 1998; RFC 2328] provide additional details.
+4.6.3 Inter-AS Routing: BGP
+We just learned how ISPs use RIP and OSPF to determine optimal paths for sourcedestination pairs that are internal to the same AS. Let’s now examine how paths are
+determined for source-destination pairs that span multiple ASs. The Border Gateway Protocol version 4, specified in RFC 4271 (see also [RFC 4274), is the de facto
+standard inter-AS routing protocol in today’s Internet. It is commonly referred to as
+BGP4 or simply as BGP. As an inter-AS routing protocol (see Section 4.5.3), BGP
+provides each AS a means to
+1. Obtain subnet reachability information from neighboring ASs.
+2. Propagate the reachability information to all routers internal to the AS.
+3. Determine “good” routes to subnets based on the reachability information and
+on AS policy.
+390 CHAPTER 4 • THE NETWORK LAYER
+SETTING OSPF LINK WEIGHTS
+Our discussion of link-state routing has implicitly assumed that link weights are set, a routing algorithm such as OSPF is run, and traffic flows according to the routing tables computed by the LS algorithm. In terms of cause and effect, the link weights are given (i.e., they
+come first) and result (via Dijkstra’s algorithm) in routing paths that minimize overall cost. In
+this viewpoint, link weights reflect the cost of using a link (e.g., if link weights are inversely
+proportional to capacity, then the use of high-capacity links would have smaller weights
+and thus be more attractive from a routing standpoint) and Disjkstra’s algorithm serves to
+minimize overall cost.
+In practice, the cause and effect relationship between link weights and routing paths
+may be reversed, with network operators configuring link weights in order to obtain routing
+paths that achieve certain traffic engineering goals [Fortz 2000, Fortz 2002]. For example,
+suppose a network operator has an estimate of traffic flow entering the network at each
+ingress point and destined for each egress point. The operator may then want to put in
+place a specific routing of ingress-to-egress flows that minimizes the maximum utilization
+over all of the network’s links. But with a routing algorithm such as OSPF, the operator’s
+main “knobs” for tuning the routing of flows through the network are the link weights. Thus,
+in order to achieve the goal of minimizing the maximum link utilization, the operator must
+find the set of link weights that achieves this goal. This is a reversal of the cause and effect
+relationship—the desired routing of flows is known, and the OSPF link weights must be
+found such that the OSPF routing algorithm results in this desired routing of flows.
+PRINCIPLES IN PRACTICE
+Most importantly, BGP allows each subnet to advertise its existence to the rest of
+the Internet. A subnet screams “I exist and I am here,” and BGP makes sure that all
+the ASs in the Internet know about the subnet and how to get there. If it weren’t for
+BGP, each subnet would be isolated—alone and unknown by the rest of the Internet.
+BGP Basics
+BGP is extremely complex; entire books have been devoted to the subject and many
+issues are still not well understood [Yannuzzi 2005]. Furthermore, even after having
+read the books and RFCs, you may find it difficult to fully master BGP without having practiced BGP for many months (if not years) as a designer or administrator of
+an upper-tier ISP. Nevertheless, because BGP is an absolutely critical protocol for
+the Internet—in essence, it is the protocol that glues the whole thing together—we
+need to acquire at least a rudimentary understanding of how it works. We begin by
+describing how BGP might work in the context of the simple example network we
+studied earlier in Figure 4.32. In this description, we build on our discussion of hierarchical routing in Section 4.5.3; we encourage you to review that material.
+In BGP, pairs of routers exchange routing information over semipermanent
+TCP connections using port 179. The semi-permanent TCP connections for the network in Figure 4.32 are shown in Figure 4.40. There is typically one such BGP TCP
+connection for each link that directly connects two routers in two different ASs;
+thus, in Figure 4.40, there is a TCP connection between gateway routers 3a and 1c
+and another TCP connection between gateway routers 1b and 2a. There are also
+semipermanent BGP TCP connections between routers within an AS. In particular,
+Figure 4.40 displays a common configuration of one TCP connection for each pair
+of routers internal to an AS, creating a mesh of TCP connections within each AS.
+For each TCP connection, the two routers at the end of the connection are called
+BGP peers, and the TCP connection along with all the BGP messages sent over the
+4.6 • ROUTING IN THE INTERNET 391
+AS1
+AS3
+3b
+eBGP session
+Key:
+iBGP session
+3c
+3a
+1a
+1c
+1b
+1d
+AS2
+2a
+2c
+2b
+Figure 4.40  eBGP and iBGP sessions
+VideoNote
+Gluing the Internet
+together
+392 CHAPTER 4 • THE NETWORK LAYER
+OBTAINING INTERNET PRESENCE: PUTTING THE PUZZLE TOGETHER
+Suppose you have just created a small that has a number of servers, including a public
+Web server that describes your company’s products and services, a mail server from which
+your employees obtain their email messages, and a DNS server. Naturally, you would like
+the entire world to be able to surf your Web site in order to learn about your exciting products and services. Moreover, you would like your employees to be able to send and
+receive email to potential customers throughout the world.
+To meet these goals, you first need to obtain Internet connectivity, which is done by
+contracting with, and connecting to, a local ISP. Your company will have a gateway
+router, which will be connected to a router in your local ISP. This connection might be
+a DSL connection through the existing telephone infrastructure, a leased line to the ISP’s
+router, or one of the many other access solutions described in Chapter 1. Your local
+ISP will also provide you with an IP address range, e.g., a /24 address range consisting of 256 addresses. Once you have your physical connectivity and your IP address
+range, you will assign one of the IP addresses (in your address range) to your Web
+server, one to your mail server, one to your DNS server, one to your gateway router,
+and other IP addresses to other servers and networking devices in your company’s
+network.
+In addition to contracting with an ISP, you will also need to contract with an Internet registrar to obtain a domain name for your company, as described in Chapter 2. For example, if
+your company’s name is, say, Xanadu Inc., you will naturally try to obtain the domain name
+xanadu.com. Your company must also obtain presence in the DNS system. Specifically,
+because outsiders will want to contact your DNS server to obtain the IP addresses of your
+servers, you will also need to provide your registrar with the IP address of your DNS server.
+Your registrar will then put an entry for your DNS server (domain name and corresponding IP
+address) in the .com top-level-domain servers, as described in Chapter 2. After this step is
+completed, any user who knows your domain name (e.g., xanadu.com) will be able to
+obtain the IP address of your DNS server via the DNS system.
+So that people can discover the IP addresses of your Web server, in your DNS server
+you will need to include entries that map the host name of your Web server (e.g.,
+www.xanadu.com) to its IP address. You will want to have similar entries for other publicly
+available servers in your company, including your mail server. In this manner, if Alice
+wants to browse your Web server, the DNS system will contact your DNS server, find the
+IP address of your Web server, and give it to Alice. Alice can then establish a TCP
+connection directly with your Web server.
+However, there still remains one other necessary and crucial step to allow outsiders
+from around the world access your Web server. Consider what happens when Alice,
+who knows the IP address of your Web server, sends an IP datagram (e.g., a TCP SYN
+segment) to that IP address. This datagram will be routed through the Internet, visiting a
+series of routers in many different ASes, and eventually reach your Web server. When
+PRINCIPLES IN PRACTICE
+connection is called a BGP session. Furthermore, a BGP session that spans two ASs
+is called an external BGP (eBGP) session, and a BGP session between routers in
+the same AS is called an internal BGP (iBGP) session. In Figure 4.40, the eBGP
+sessions are shown with the long dashes; the iBGP sessions are shown with the short
+dashes. Note that BGP session lines in Figure 4.40 do not always correspond to the
+physical links in Figure 4.32.
+BGP allows each AS to learn which destinations are reachable via its neighboring ASs. In BGP, destinations are not hosts but instead are CIDRized prefixes, with
+each prefix representing a subnet or a collection of subnets. Thus, for example, suppose there are four subnets attached to AS2: 138.16.64/24, 138.16.65/24,
+138.16.66/24, and 138.16.67/24. Then AS2 could aggregate the prefixes for these four
+subnets and use BGP to advertise the single prefix to 138.16.64/22 to AS1. As another
+example, suppose that only the first three of those four subnets are in AS2 and the
+fourth subnet, 138.16.67/24, is in AS3. Then, as described in the Principles and Practice in Section 4.4.2, because routers use longest-prefix matching for forwarding datagrams, AS3 could advertise to AS1 the more specific prefix 138.16.67/24 and AS2
+could still advertise to AS1 the aggregated prefix 138.16.64/22.
+Let’s now examine how BGP would distribute prefix reachability information
+over the BGP sessions shown in Figure 4.40. As you might expect, using the eBGP
+session between the gateway routers 3a and 1c, AS3 sends AS1 the list of prefixes
+that are reachable from AS3; and AS1 sends AS3 the list of prefixes that are reachable from AS1. Similarly, AS1 and AS2 exchange prefix reachability information
+through their gateway routers 1b and 2a. Also as you may expect, when a gateway
+router (in any AS) receives eBGP-learned prefixes, the gateway router uses its iBGP
+sessions to distribute the prefixes to the other routers in the AS. Thus, all the routers
+in AS1 learn about AS3 prefixes, including the gateway router 1b. The gateway
+router 1b (in AS1) can therefore re-advertise AS3’s prefixes to AS2. When a router
+(gateway or not) learns about a new prefix, it creates an entry for the prefix in its
+forwarding table, as described in Section 4.5.3.
+4.6 • ROUTING IN THE INTERNET 393
+any one of the routers receives the datagram, it is going to look for an entry in its
+forwarding table to determine on which outgoing port it should forward the datagram.
+Therefore, each of the routers needs to know about the existence of your company’s
+/24 prefix (or some aggregate entry). How does a router become aware of your
+company’s prefix? As we have just seen, it becomes aware of it from BGP! Specifically,
+when your company contracts with a local ISP and gets assigned a prefix (i.e., an
+address range), your local ISP will use BGP to advertise this prefix to the ISPs to which
+it connects. Those ISPs will then, in turn, use BGP to propagate the advertisement.
+Eventually, all Internet routers will know about your prefix (or about some aggregate that
+includes your prefix) and thus be able to appropriately forward datagrams destined to
+your Web and mail servers.
+Path Attributes and BGP Routes
+Having now a preliminary understanding of BGP, let’s get a little deeper into it
+(while still brushing some of the less important details under the rug!). In BGP, an
+autonomous system is identified by its globally unique autonomous system number (ASN) [RFC 1930]. (Technically, not every AS has an ASN. In particular, a socalled stub AS that carries only traffic for which it is a source or destination will not
+typically have an ASN; we ignore this technicality in our discussion in order to better see the forest for the trees.) AS numbers, like IP addresses, are assigned by
+ICANN regional registries [ICANN 2012].
+When a router advertises a prefix across a BGP session, it includes with the prefix a number of BGP attributes. In BGP jargon, a prefix along with its attributes is
+called a route. Thus, BGP peers advertise routes to each other. Two of the more
+important attributes are AS-PATH and NEXT-HOP:
+• AS-PATH. This attribute contains the ASs through which the advertisement for the
+prefix has passed. When a prefix is passed into an AS, the AS adds its ASN to the ASPATH attribute. For example, consider Figure 4.40 and suppose that prefix
+138.16.64/24 is first advertised from AS2 to AS1; if AS1 then advertises the prefix to
+AS3, AS-PATH would be AS2 AS1. Routers use the AS-PATH attribute to detect and
+prevent looping advertisements; specifically, if a router sees that its AS is contained
+in the path list, it will reject the advertisement. As we’ll soon discuss, routers also use
+the AS-PATH attribute in choosing among multiple paths to the same prefix.
+• Providing the critical link between the inter-AS and intra-AS routing protocols, the
+NEXT-HOP attribute has a subtle but important use. The NEXT-HOP is the router
+interface that begins the AS-PATH. To gain insight into this attribute, let’s again refer
+to Figure 4.40. Consider what happens when the gateway router 3a in AS3 advertises
+a route to gateway router 1c in AS1 using eBGP. The route includes the advertised
+prefix, which we’ll call x, and an AS-PATH to the prefix. This advertisement also
+includes the NEXT-HOP, which is the IP address of the router 3a interface that leads
+to 1c. (Recall that a router has multiple IP addresses, one for each of its interfaces.)
+Now consider what happens when router 1d learns about this route from iBGP. After
+learning about this route to x, router 1d may want to forward packets to x along the
+route, that is, router 1d may want to include the entry (x, l) in its forwarding table,
+where l is its interface that begins the least-cost path from 1d towards the gateway
+router 1c. To determine l, 1d provides the IP address in the NEXT-HOP attribute to
+its intra-AS routing module. Note that the intra-AS routing algorithm has determined
+the least-cost path to all subnets attached to the routers in AS1, including to the subnet for the link between 1c and 3a. From this least-cost path from 1d to the 1c-3a subnet, 1d determines its router interface l that begins this path and then adds the entry
+(x, l) to its forwarding table. Whew! In summary, the NEXT-HOP attribute is used by
+routers to properly configure their forwarding tables.
+• Figure 4.41 illustrates another situation where the NEXT-HOP is needed. In this figure, AS1 and AS2 are connected by two peering links. A router in AS1 could learn
+394 CHAPTER 4 • THE NETWORK LAYER
+about two different routes to the same prefix x. These two routes could have the same
+AS-PATH to x, but could have different NEXT-HOP values corresponding to the different peering links. Using the NEXT-HOP values and the intra-AS routing algorithm, the router can determine the cost of the path to each peering link, and then
+apply hot-potato routing (see Section 4.5.3) to determine the appropriate interface.
+BGP also includes attributes that allow routers to assign preference metrics to
+the routes, and an attribute that indicates how the prefix was inserted into BGP at
+the origin AS. For a full discussion of route attributes, see [Griffin 2012; Stewart
+1999; Halabi 2000; Feamster 2004; RFC 4271].
+When a gateway router receives a route advertisement, it uses its import policy
+to decide whether to accept or filter the route and whether to set certain attributes
+such as the router preference metrics. The import policy may filter a route because
+the AS may not want to send traffic over one of the ASs in the route’s AS-PATH.
+The gateway router may also filter a route because it already knows of a preferable
+route to the same prefix.

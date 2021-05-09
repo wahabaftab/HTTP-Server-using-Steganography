@@ -1,0 +1,319 @@
+This is text 4
+We’ll see in Chapter 5 that not all link-layer protocols can carry network-layer packets of the same size. Some protocols can carry big datagrams, whereas other protocols can carry only little packets. For example, Ethernet frames can carry up to 1,500
+bytes of data, whereas frames for some wide-area links can carry no more than 576
+bytes. The maximum amount of data that a link-layer frame can carry is called the
+maximum transmission unit (MTU). Because each IP datagram is encapsulated
+within the link-layer frame for transport from one router to the next router, the MTU
+of the link-layer protocol places a hard limit on the length of an IP datagram. Having
+a hard limit on the size of an IP datagram is not much of a problem. What is a problem is that each of the links along the route between sender and destination can use
+different link-layer protocols, and each of these protocols can have different MTUs.
+To understand the forwarding issue better, imagine that you are a router that
+interconnects several links, each running different link-layer protocols with different MTUs. Suppose you receive an IP datagram from one link. You check your forwarding table to determine the outgoing link, and this outgoing link has an MTU
+that is smaller than the length of the IP datagram. Time to panic—how are you going
+to squeeze this oversized IP datagram into the payload field of the link-layer frame?
+4.4 • THE INTERNET PROTOCOL (IP) 335
+The solution is to fragment the data in the IP datagram into two or more smaller IP
+datagrams, encapsulate each of these smaller IP datagrams in a separate link-layer
+frame; and send these frames over the outgoing link. Each of these smaller datagrams is referred to as a fragment.
+Fragments need to be reassembled before they reach the transport layer at the destination. Indeed, both TCP and UDP are expecting to receive complete, unfragmented
+segments from the network layer. The designers of IPv4 felt that reassembling datagrams in the routers would introduce significant complication into the protocol and
+put a damper on router performance. (If you were a router, would you want to be
+reassembling fragments on top of everything else you had to do?) Sticking to the principle of keeping the network core simple, the designers of IPv4 decided to put the job
+of datagram reassembly in the end systems rather than in network routers.
+When a destination host receives a series of datagrams from the same source, it
+needs to determine whether any of these datagrams are fragments of some original,
+larger datagram. If some datagrams are fragments, it must further determine when it
+has received the last fragment and how the fragments it has received should be
+pieced back together to form the original datagram. To allow the destination host to
+perform these reassembly tasks, the designers of IP (version 4) put identification,
+flag, and fragmentation offset fields in the IP datagram header. When a datagram is
+created, the sending host stamps the datagram with an identification number as well
+as source and destination addresses. Typically, the sending host increments the identification number for each datagram it sends. When a router needs to fragment a
+datagram, each resulting datagram (that is, fragment) is stamped with the source
+address, destination address, and identification number of the original datagram.
+When the destination receives a series of datagrams from the same sending host, it
+can examine the identification numbers of the datagrams to determine which of the
+datagrams are actually fragments of the same larger datagram. Because IP is an
+unreliable service, one or more of the fragments may never arrive at the destination.
+For this reason, in order for the destination host to be absolutely sure it has received
+the last fragment of the original datagram, the last fragment has a flag bit set to 0,
+whereas all the other fragments have this flag bit set to 1. Also, in order for the destination host to determine whether a fragment is missing (and also to be able to
+reassemble the fragments in their proper order), the offset field is used to specify
+where the fragment fits within the original IP datagram.
+Figure 4.14 illustrates an example. A datagram of 4,000 bytes (20 bytes of IP
+header plus 3,980 bytes of IP payload) arrives at a router and must be forwarded to
+a link with an MTU of 1,500 bytes. This implies that the 3,980 data bytes in the
+original datagram must be allocated to three separate fragments (each of which is
+also an IP datagram). Suppose that the original datagram is stamped with an identification number of 777. The characteristics of the three fragments are shown in
+Table 4.2. The values in Table 4.2 reflect the requirement that the amount of original payload data in all but the last fragment be a multiple of 8 bytes, and that the offset value be specified in units of 8-byte chunks.
+336 CHAPTER 4 • THE NETWORK LAYER
+4.4 • THE INTERNET PROTOCOL (IP) 337
+Fragmentation:
+In: one large datagram (4,000 bytes)
+Out: 3 smaller datagrams
+Reassembly:
+In: 3 smaller datagrams
+Out: one large datagram (4,000 bytes)
+Link MTU: 1,500 bytes
+Figure 4.14  IP fragmentation and reassembly
+Table 4.2  IP fragments
+Fragment Bytes ID Offset Flag
+1st fragment 1,480 bytes in
+the data field of
+the IP datagram
+identification  777 offset  0 (meaning the data
+should be inserted beginning
+at byte 0)
+2nd fragment 1,480 bytes
+of data
+identification  777 offset  185 (meaning the data
+should be inserted beginning at byte
+1,480. Note that 185 · 8  1,480)
+3rd fragment 1,020 bytes
+( 3,980–1,480–1,480)
+of data
+identification  777 offset  370 (meaning the data
+should be inserted beginning at byte
+2,960. Note that 370 · 8  2,960)
+flag  1 (meaning
+there is more)
+flag  1 (meaning
+there is more)
+flag  0 (meaning this
+is the last fragment)
+At the destination, the payload of the datagram is passed to the transport layer
+only after the IP layer has fully reconstructed the original IP datagram. If one or
+more of the fragments does not arrive at the destination, the incomplete datagram is
+discarded and not passed to the transport layer. But, as we learned in the previous
+chapter, if TCP is being used at the transport layer, then TCP will recover from this
+loss by having the source retransmit the data in the original datagram.
+We have just learned that IP fragmentation plays an important role in gluing
+together the many disparate link-layer technologies. But fragmentation also has its
+costs. First, it complicates routers and end systems, which need to be designed to
+accommodate datagram fragmentation and reassembly. Second, fragmentation can
+be used to create lethal DoS attacks, whereby the attacker sends a series of bizarre
+and unexpected fragments. A classic example is the Jolt2 attack, where the attacker
+sends a stream of small fragments to the target host, none of which has an offset of
+zero. The target can collapse as it attempts to rebuild datagrams out of the degenerate packets. Another class of exploits sends overlapping IP fragments, that is, fragments whose offset values are set so that the fragments do not align properly.
+Vulnerable operating systems, not knowing what to do with overlapping fragments,
+can crash [Skoudis 2006]. As we’ll see at the end of this section, a new version of
+the IP protocol, IPv6, does away with fragmentation altogether, thereby streamlining IP packet processing and making IP less vulnerable to attack.
+At this book’s Web site, we provide a Java applet that generates fragments. You
+provide the incoming datagram size, the MTU, and the incoming datagram identification. The applet automatically generates the fragments for you. See http://
+www.awl.com/kurose-ross.
+4.4.2 IPv4 Addressing
+We now turn our attention to IPv4 addressing. Although you may be thinking that
+addressing must be a straightforward topic, hopefully by the end of this chapter
+you’ll be convinced that Internet addressing is not only a juicy, subtle, and interesting topic but also one that is of central importance to the Internet. Excellent treatments of IPv4 addressing are [3Com Addressing 2012] and the first chapter in
+[Stewart 1999].
+Before discussing IP addressing, however, we’ll need to say a few words about
+how hosts and routers are connected into the network. A host typically has only a
+single link into the network; when IP in the host wants to send a datagram, it does
+so over this link. The boundary between the host and the physical link is called an
+interface. Now consider a router and its interfaces. Because a router’s job is to
+receive a datagram on one link and forward the datagram on some other link, a
+router necessarily has two or more links to which it is connected. The boundary
+between the router and any one of its links is also called an interface. A router thus
+has multiple interfaces, one for each of its links. Because every host and router is
+capable of sending and receiving IP datagrams, IP requires each host and router
+interface to have its own IP address. Thus, an IP address is technically associated
+with an interface, rather than with the host or router containing that interface.
+Each IP address is 32 bits long (equivalently, 4 bytes), and there are thus a total
+of 232 possible IP addresses. By approximating 210 by 103, it is easy to see that there
+338 CHAPTER 4 • THE NETWORK LAYER
+are about 4 billion possible IP addresses. These addresses are typically written in
+so-called dotted-decimal notation, in which each byte of the address is written in
+its decimal form and is separated by a period (dot) from other bytes in the address.
+For example, consider the IP address 193.32.216.9. The 193 is the decimal equivalent of the first 8 bits of the address; the 32 is the decimal equivalent of the second
+8 bits of the address, and so on. Thus, the address 193.32.216.9 in binary notation is
+11000001 00100000 11011000 00001001
+Each interface on every host and router in the global Internet must have an IP
+address that is globally unique (except for interfaces behind NATs, as discussed at
+the end of this section). These addresses cannot be chosen in a willy-nilly manner,
+however. A portion of an interface’s IP address will be determined by the subnet to
+which it is connected.
+Figure 4.15 provides an example of IP addressing and interfaces. In this figure,
+one router (with three interfaces) is used to interconnect seven hosts. Take a close look
+at the IP addresses assigned to the host and router interfaces, as there are several things
+to notice. The three hosts in the upper-left portion of Figure 4.15, and the router interface to which they are connected, all have an IP address of the form 223.1.1.xxx. That
+is, they all have the same leftmost 24 bits in their IP address. The four interfaces are
+also interconnected to each other by a network that contains no routers. This network
+4.4 • THE INTERNET PROTOCOL (IP) 339
+223.1.1.1
+223.1.2.1
+223.1.2.2
+223.1.1.2
+223.1.1.4 223.1.2.9
+223.1.3.27
+223.1.1.3
+223.1.3.1 223.1.3.2
+Figure 4.15  Interface addresses and subnets
+could be interconnected by an Ethernet LAN, in which case the interfaces would be
+interconnected by an Ethernet switch (as we’ll discuss in Chapter 5), or by a wireless
+access point (as we’ll discuss in Chapter 6). We’ll represent this routerless network
+connecting these hosts as a cloud for now, and dive into the internals of such networks
+in Chapters 5 and 6.
+In IP terms, this network interconnecting three host interfaces and one router
+interface forms a subnet [RFC 950]. (A subnet is also called an IP network or
+simply a network in the Internet literature.) IP addressing assigns an address to this
+subnet: 223.1.1.0/24, where the /24 notation, sometimes known as a subnet mask,
+indicates that the leftmost 24 bits of the 32-bit quantity define the subnet
+address. The subnet 223.1.1.0/24 thus consists of the three host interfaces
+(223.1.1.1, 223.1.1.2, and 223.1.1.3) and one router interface (223.1.1.4). Any additional hosts attached to the 223.1.1.0/24 subnet would be required to have an
+address of the form 223.1.1.xxx. There are two additional subnets shown in Figure
+4.15: the 223.1.2.0/24 network and the 223.1.3.0/24 subnet. Figure 4.16 illustrates
+the three IP subnets present in Figure 4.15.
+The IP definition of a subnet is not restricted to Ethernet segments that connect
+multiple hosts to a router interface. To get some insight here, consider Figure 4.17,
+which shows three routers that are interconnected with each other by point-to-point
+links. Each router has three interfaces, one for each point-to-point link and one for
+the broadcast link that directly connects the router to a pair of hosts. What subnets
+are present here? Three subnets, 223.1.1.0/24, 223.1.2.0/24, and 223.1.3.0/24, are
+similar to the subnets we encountered in Figure 4.15. But note that there are three
+340 CHAPTER 4 • THE NETWORK LAYER
+223.1.1.0/23
+223.1.2.0/23
+223.1.3.0/23
+Figure 4.16  Subnet addresses
+additional subnets in this example as well: one subnet, 223.1.9.0/24, for the interfaces
+that connect routers R1 and R2; another subnet, 223.1.8.0/24, for the interfaces that
+connect routers R2 and R3; and a third subnet, 223.1.7.0/24, for the interfaces that
+connect routers R3 and R1. For a general interconnected system of routers and hosts,
+we can use the following recipe to define the subnets in the system:
+To determine the subnets, detach each interface from its host or router, creating
+islands of isolated networks, with interfaces terminating the end points of the
+isolated networks. Each of these isolated networks is called a subnet.
+If we apply this procedure to the interconnected system in Figure 4.17, we get six
+islands or subnets.
+From the discussion above, it’s clear that an organization (such as a company
+or academic institution) with multiple Ethernet segments and point-to-point links
+will have multiple subnets, with all of the devices on a given subnet having the same
+subnet address. In principle, the different subnets could have quite different subnet
+addresses. In practice, however, their subnet addresses often have much in common.
+To understand why, let’s next turn our attention to how addressing is handled in the
+global Internet.
+4.4 • THE INTERNET PROTOCOL (IP) 341
+223.1.8.1 223.1.8.0
+223.1.9.1 223.1.7.1
+223.1.2.6
+223.1.2.1 223.1.2.2 223.1.3.1 223.1.3.2
+223.1.1.3
+223.1.9.2 223.1.7.0
+223.1.3.27
+223.1.1.1 223.1.1.4
+R1
+R2 R3
+Figure 4.17  Three routers interconnecting six subnets
+The Internet’s address assignment strategy is known as Classless Interdomain
+Routing (CIDR—pronounced cider) [RFC 4632]. CIDR generalizes the notion of
+subnet addressing. As with subnet addressing, the 32-bit IP address is divided into
+two parts and again has the dotted-decimal form a.b.c.d/x, where x indicates the
+number of bits in the first part of the address.
+The x most significant bits of an address of the form a.b.c.d/x constitute the
+network portion of the IP address, and are often referred to as the prefix (or network prefix) of the address. An organization is typically assigned a block of contiguous addresses, that is, a range of addresses with a common prefix (see the
+Principles in Practice sidebar). In this case, the IP addresses of devices within the
+organization will share the common prefix. When we cover the Internet’s BGP
+342 CHAPTER 4 • THE NETWORK LAYER
+This example of an ISP that connects eight organizations to the Internet nicely illustrates
+how carefully allocated CIDRized addresses facilitate routing. Suppose, as shown in Figure
+4.18, that the ISP (which we’ll call Fly-By-Night-ISP) advertises to the outside world that it
+should be sent any datagrams whose first 20 address bits match 200.23.16.0/20. The
+rest of the world need not know that within the address block 200.23.16.0/20 there are
+in fact eight other organizations, each with its own subnets. This ability to use a single prefix to advertise multiple networks is often referred to as address aggregation (also
+route aggregation or route summarization).
+Address aggregation works extremely well when addresses are allocated in blocks to
+ISPs and then from ISPs to client organizations. But what happens when addresses are
+not allocated in such a hierarchical manner? What would happen, for example, if Fly-ByNight-ISP acquires ISPs-R-Us and then has Organization 1 connect to the Internet through
+its subsidiary ISPs-R-Us? As shown in Figure 4.18, the subsidiary ISPs-R-Us owns the
+address block 199.31.0.0/16, but Organization 1’s IP addresses are unfortunately outside of this address block. What should be done here? Certainly, Organization 1 could
+renumber all of its routers and hosts to have addresses within the ISPs-R-Us address
+block. But this is a costly solution, and Organization 1 might well be reassigned to
+another subsidiary in the future. The solution typically adopted is for Organization 1
+to keep its IP addresses in 200.23.18.0/23. In this case, as shown in Figure 4.19,
+Fly-By-Night-ISP continues to advertise the address block 200.23.16.0/20 and ISPs-R-Us
+continues to advertise 199.31.0.0/16. However, ISPs-R-Us now also advertises the block
+of addresses for Organization 1, 200.23.18.0/23. When other routers in the larger
+Internet see the address blocks 200.23.16.0/20 (from Fly-By-Night-ISP) and
+200.23.18.0/23 (from ISPs-R-Us) and want to route to an address in the block
+200.23.18.0/23, they will use longest prefix matching (see Section 4.2.2), and route
+toward ISPs-R-Us, as it advertises the longest (most specific) address prefix that matches
+the destination address.
+PRINCIPLES IN PRACTICE
+4.4 • THE INTERNET PROTOCOL (IP) 343
+Organization 0
+200.23.16.0/23
+Organization 1
+Fly-By-Night-ISP
+“Send me anything
+with addresses
+beginning
+200.23.16.0/20”
+ISPs-R-Us
+200.23.18.0/23
+Organization 2
+200.23.20.0/23
+Organization 7
+200.23.30.0/23
+Internet
+“Send me anything
+with addresses
+beginning
+199.31.0.0/16”
+Figure 4.18  Hierarchical addressing and route aggregation
+Organization 0
+200.23.16.0/23
+Organization 2
+Fly-By-Night-ISP
+“Send me anything
+with addresses
+beginning
+200.23.16.0/20”
+ISPs-R-Us
+200.23.20.0/23
+Organization 7
+200.23.30.0/23
+Organization 1
+200.23.18.0/23
+Internet
+“Send me anything
+with addresses
+beginning
+199.31.0.0/16 or
+200.23.18.0/23”
+Figure 4.19  ISPs-R-Us has a more specific route to Organization 1
+routing protocol in Section 4.6, we’ll see that only these x leading prefix bits are
+considered by routers outside the organization’s network. That is, when a router
+outside the organization forwards a datagram whose destination address is inside
+the organization, only the leading x bits of the address need be considered. This
+considerably reduces the size of the forwarding table in these routers, since a single entry of the form a.b.c.d/x will be sufficient to forward packets to any destination within the organization.
+The remaining 32-x bits of an address can be thought of as distinguishing
+among the devices within the organization, all of which have the same network prefix. These are the bits that will be considered when forwarding packets at routers
+within the organization. These lower-order bits may (or may not) have an additional
+subnetting structure, such as that discussed above. For example, suppose the first 21
+bits of the CIDRized address a.b.c.d/21 specify the organization’s network prefix
+and are common to the IP addresses of all devices in that organization. The remaining 11 bits then identify the specific hosts in the organization. The organization’s
+internal structure might be such that these 11 rightmost bits are used for subnetting
+within the organization, as discussed above. For example, a.b.c.d/24 might refer to a
+specific subnet within the organization.
+Before CIDR was adopted, the network portions of an IP address were constrained to be 8, 16, or 24 bits in length, an addressing scheme known as classful
+addressing, since subnets with 8-, 16-, and 24-bit subnet addresses were known as
+class A, B, and C networks, respectively. The requirement that the subnet portion of
+an IP address be exactly 1, 2, or 3 bytes long turned out to be problematic for supporting the rapidly growing number of organizations with small and medium-sized
+subnets. A class C (/24) subnet could accommodate only up to 28 – 2 = 254 hosts
+(two of the 28 = 256 addresses are reserved for special use)—too small for many
+organizations. However, a class B (/16) subnet, which supports up to 65,634 hosts,
+was too large. Under classful addressing, an organization with, say, 2,000 hosts was
+typically allocated a class B (/16) subnet address. This led to a rapid depletion of the
+class B address space and poor utilization of the assigned address space. For example, the organization that used a class B address for its 2,000 hosts was allocated
+enough of the address space for up to 65,534 interfaces—leaving more than 63,000
+addresses that could not be used by other organizations.
+We would be remiss if we did not mention yet another type of IP address, the IP
+broadcast address 255.255.255.255. When a host sends a datagram with destination
+address 255.255.255.255, the message is delivered to all hosts on the same subnet.
+Routers optionally forward the message into neighboring subnets as well (although
+they usually don’t).
+Having now studied IP addressing in detail, we need to know how hosts and
+subnets get their addresses in the first place. Let’s begin by looking at how an
+organization gets a block of addresses for its devices, and then look at how a device
+(such as a host) is assigned an address from within the organization’s block of
+addresses.
